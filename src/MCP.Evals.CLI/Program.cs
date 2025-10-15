@@ -36,8 +36,8 @@ class Program
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Fatal error: {ex.Message}");
-            Console.Error.WriteLine($"Stack trace: {ex.StackTrace}");
+            Console.Error.WriteLine($"[ERROR] Fatal error: {ex.Message}");
+            Console.Error.WriteLine($"[ERROR] Stack trace: {ex.StackTrace}");
             return 1;
         }
     }
@@ -45,8 +45,9 @@ class Program
     /// <summary>
     /// Create a configured host builder following DIP
     /// </summary>
-    public static IHostBuilder CreateHostBuilder(string[]? args = null) =>
-        Host.CreateDefaultBuilder(args)
+    public static IHostBuilder CreateHostBuilder(string[]? args = null)
+    {
+        var builder = Host.CreateDefaultBuilder(args)
             .ConfigureLogging(logging =>
             {
                 logging.ClearProviders();
@@ -63,8 +64,11 @@ class Program
                 {
                     // Configure based on environment variables or configuration
                     var openAiApiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
+                    Console.WriteLine($"[DEBUG] Reading API key from environment in Program.cs: {(string.IsNullOrEmpty(openAiApiKey) ? "NOT SET" : "SET")}");
+
                     if (!string.IsNullOrEmpty(openAiApiKey))
                     {
+                        Console.WriteLine($"[DEBUG] Setting API key in configuration...");
                         // Create a new configuration with the API key
                         options.DefaultLanguageModel = new LanguageModelConfiguration
                         {
@@ -75,10 +79,17 @@ class Program
                             Temperature = options.DefaultLanguageModel.Temperature
                         };
                     }
+                    else
+                    {
+                        Console.WriteLine($"[DEBUG] API key not found in environment, using default configuration");
+                    }
 
                     // Enable Prometheus metrics if requested
                     var enableMetrics = Environment.GetEnvironmentVariable("ENABLE_PROMETHEUS_METRICS");
                     options.EnablePrometheusMetrics = bool.TryParse(enableMetrics, out var result) && result;
                 });
             });
+
+        return builder;
+    }
 }

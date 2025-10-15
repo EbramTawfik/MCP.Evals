@@ -55,6 +55,13 @@ public class EvaluateCommand : Command
     {
         try
         {
+            if (verbose)
+            {
+                Console.WriteLine($"[INFO] Starting evaluation with config: {configPath}");
+                Console.WriteLine($"[INFO] Current Directory: {Environment.CurrentDirectory}");
+                Console.WriteLine($"[INFO] Full Config Path: {Path.GetFullPath(configPath)}");
+            }
+
             // Build and configure the host
             var hostBuilder = Program.CreateHostBuilder();
 
@@ -63,6 +70,7 @@ public class EvaluateCommand : Command
                 hostBuilder.ConfigureLogging(logging =>
                 {
                     logging.SetMinimumLevel(LogLevel.Debug);
+                    logging.AddConsole();
                 });
             }
 
@@ -75,8 +83,16 @@ public class EvaluateCommand : Command
 
             if (!File.Exists(configPath))
             {
+                Console.WriteLine($"[ERROR] Configuration file not found: {configPath}");
+                Console.WriteLine($"[ERROR] Absolute path: {Path.GetFullPath(configPath)}");
                 logger.LogError("Configuration file not found: {ConfigPath}", configPath);
                 return 1;
+            }
+
+            if (verbose)
+            {
+                var configContent = await File.ReadAllTextAsync(configPath);
+                Console.WriteLine($"[INFO] Config file loaded successfully ({configContent.Length} chars)");
             }
 
             var stopwatch = Stopwatch.StartNew();
@@ -102,10 +118,10 @@ public class EvaluateCommand : Command
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Error: {ex.Message}");
+            Console.Error.WriteLine($"[ERROR] Evaluation failed: {ex.Message}");
             if (verbose)
             {
-                Console.Error.WriteLine($"Stack trace: {ex.StackTrace}");
+                Console.Error.WriteLine($"[ERROR] Full exception: {ex}");
             }
             return 1;
         }

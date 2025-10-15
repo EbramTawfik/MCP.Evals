@@ -117,7 +117,15 @@ public static class ServiceCollectionExtensions
         ILogger<OpenAILanguageModel> logger,
         IMcpClientService mcpClientService)
     {
-        var apiKey = config.Value.ApiKey ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY");
+        Console.WriteLine($"[DEBUG] Creating OpenAI Language Model...");
+        Console.WriteLine($"[DEBUG] Config API Key: {(string.IsNullOrEmpty(config.Value.ApiKey) ? "NOT SET" : "SET")}");
+
+        var envApiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
+        Console.WriteLine($"[DEBUG] Environment API Key: {(string.IsNullOrEmpty(envApiKey) ? "NOT SET" : "SET")}");
+
+        var apiKey = config.Value.ApiKey ?? envApiKey;
+        Console.WriteLine($"[DEBUG] Final API Key: {(string.IsNullOrEmpty(apiKey) ? "NOT SET" : "SET")}");
+
         if (string.IsNullOrEmpty(apiKey))
         {
             throw new InvalidOperationException("OpenAI API key not configured. Set OPENAI_API_KEY environment variable or configure in options.");

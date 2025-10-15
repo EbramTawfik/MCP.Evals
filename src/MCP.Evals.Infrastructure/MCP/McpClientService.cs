@@ -14,14 +14,11 @@ namespace MCP.Evals.Infrastructure.MCP;
 public class McpClientService : IMcpClientService
 {
     private readonly ILogger<McpClientService> _logger;
-    private readonly ILanguageModel _languageModel;
 
     public McpClientService(
-        ILogger<McpClientService> logger,
-        ILanguageModel languageModel)
+        ILogger<McpClientService> logger)
     {
         _logger = logger;
-        _languageModel = languageModel;
     }
 
     public async Task<string> ExecuteToolInteractionAsync(
