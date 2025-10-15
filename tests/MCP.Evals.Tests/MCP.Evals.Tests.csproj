@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <LangVersion>latest</LangVersion>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\MCP.Evals.Core\MCP.Evals.Core.csproj" />
+        <ProjectReference Include="..\..\src\MCP.Evals.Infrastructure\MCP.Evals.Infrastructure.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Testing Framework -->
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+        <PackageReference Include="xunit" Version="2.6.1" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
+
+        <!-- Assertions & Mocking -->
+        <PackageReference Include="FluentAssertions" Version="6.12.0" />
+        <PackageReference Include="Moq" Version="4.20.69" />
+
+        <!-- Testing utilities -->
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+
+        <!-- GitHub Actions Test Reporting -->
+        <PackageReference Include="GitHubActionsTestLogger" Version="2.3.3" />
+    </ItemGroup>
+
+</Project>
