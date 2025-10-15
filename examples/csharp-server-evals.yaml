@@ -1,0 +1,51 @@
+# C# MCP Server Evaluation Configuration
+# This evaluates the C# sample server with equivalent math and echo operations
+
+server:
+  transport: stdio
+  command: "dotnet"
+  args: ["run", "--project", "mcp-sample-projects/CSharpMcpSample"]
+  name: "csharp-sample-server"
+
+# Model configuration - using OpenAI GPT-4o for consistency
+model:
+  provider: openai
+  name: gpt-4o
+
+# List of evaluations to run against the C# server
+evals:
+  - name: csharp_add_basic
+    description: Test basic addition using the Add tool
+    prompt: "Use the Add tool to calculate 5 + 3. What is the result?"
+    expected_result: "Should return 8 as the sum of 5 and 3"
+    tools_required: ["Add"]
+
+  - name: csharp_multiply_basic
+    description: Test basic multiplication using the Multiply tool
+    prompt: "Use the Multiply tool to calculate 4 * 7. What is the result?"
+    expected_result: "Should return 28 as the product of 4 and 7"
+    tools_required: ["Multiply"]
+
+  - name: csharp_echo_basic
+    description: Test echo functionality
+    prompt: "Use the Echo tool to echo the message 'Hello MCP World'"
+    expected_result: "Should return 'C# Echo: Hello MCP World'"
+    tools_required: ["Echo"]
+
+  - name: csharp_complex_calculation
+    description: Test using multiple tools in sequence
+    prompt: "First multiply 6 by 4, then add 10 to that result. What is the final answer?"
+    expected_result: "Should use Multiply tool (6*4=24) then Add tool (24+10=34) to get 34"
+    tools_required: ["Multiply", "Add"]
+
+  - name: csharp_decimal_operations
+    description: Test handling of decimal numbers
+    prompt: "Add 3.5 and 2.7, then multiply the result by 2"
+    expected_result: "Should calculate 3.5 + 2.7 = 6.2, then 6.2 * 2 = 12.4"
+    tools_required: ["Add", "Multiply"]
+
+  - name: csharp_error_handling
+    description: Test error handling with invalid inputs
+    prompt: "Try to add the text 'hello' and the number 5 using the Add tool"
+    expected_result: "Should handle the type mismatch gracefully with appropriate error message"
+    tools_required: ["Add"]

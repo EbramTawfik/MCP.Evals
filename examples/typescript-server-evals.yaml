@@ -1,0 +1,27 @@
+# TypeScript MCP Server Evaluation Configuration
+# This evaluates the TypeScript sample server with math and echo operations
+
+# Model configuration - using OpenAI GPT-4o for consistency
+model:
+  provider: openai
+  name: gpt-4o
+
+# List of evaluations to run against the TypeScript server
+evals:
+  - name: typescript_add_basic
+    description: Test basic addition using the add tool
+    prompt: "Use the add tool to calculate 5 + 3. What is the result?"
+    expectedResult: "Should return 8 as the sum of 5 and 3"
+    serverPath: "http://localhost:3001/mcp"
+
+  - name: typescript_multiply_basic
+    description: Test basic multiplication using the multiply tool
+    prompt: "Use the multiply tool to calculate 4 * 7. What is the result?"
+    expectedResult: "Should return 28 as the product of 4 and 7"
+    serverPath: "http://localhost:3001/mcp"
+
+  - name: typescript_echo_basic
+    description: Test echo functionality
+    prompt: "Use the echo tool to echo the message 'Hello MCP World'"
+    expectedResult: "Should return 'TypeScript Echo: Hello MCP World'"
+    serverPath: "http://localhost:3001/mcp"
