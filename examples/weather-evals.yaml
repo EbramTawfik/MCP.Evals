@@ -1,0 +1,45 @@
+# Example MCP Evaluation Configuration
+# This file demonstrates how to configure evaluations for MCP servers
+
+name: "Weather Tool Evaluation Suite"
+description: "Comprehensive evaluation of weather-related MCP tools"
+
+# Language model configuration
+model:
+  provider: openai
+  name: gpt-4o
+  # api_key: sk-your-api-key-here  # Can also be set via OPENAI_API_KEY environment variable
+  max_tokens: 4000
+  temperature: 0.1
+
+# List of evaluations to run
+evals:
+  - name: "Basic Weather Query"
+    description: "Test basic weather information retrieval"
+    prompt: "What is the current weather in New York City?"
+    server_path: "../example-server/index.ts" # Path relative to this config file
+    expected_result: "Should provide current weather conditions including temperature, humidity, and description"
+
+  - name: "Weather Forecast"
+    description: "Test weather forecast functionality"
+    prompt: "What will the weather be like in London tomorrow?"
+    server_path: "../example-server/index.ts"
+    expected_result: "Should provide tomorrow's weather forecast"
+
+  - name: "Multiple City Weather"
+    description: "Test handling of multiple city queries"
+    prompt: "Compare the weather in Tokyo, Sydney, and Berlin right now"
+    server_path: "../example-server/index.ts"
+    expected_result: "Should provide weather information for all three cities"
+
+  - name: "Weather with Units"
+    description: "Test weather query with specific units"
+    prompt: "What's the temperature in San Francisco in Celsius?"
+    server_path: "../example-server/index.ts"
+    expected_result: "Should provide temperature specifically in Celsius"
+
+  - name: "Invalid Location Handling"
+    description: "Test how the system handles invalid or non-existent locations"
+    prompt: "What's the weather in Atlantis?"
+    server_path: "../example-server/index.ts"
+    expected_result: "Should gracefully handle the invalid location and provide appropriate error message"
