@@ -53,3 +53,7 @@ CodeCoverage/
 TestResult.xml
 nunit-*.xml
 .vs/
+
+
+*node_modules
+*dist
