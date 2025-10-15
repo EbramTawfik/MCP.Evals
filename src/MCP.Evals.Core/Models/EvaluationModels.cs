@@ -23,24 +23,65 @@ public sealed class EvaluationResult
 /// </summary>
 public sealed class EvaluationScore
 {
-    public required int Accuracy { get; init; }        // 1-5 scale
-    public required int Completeness { get; init; }    // 1-5 scale
-    public required int Relevance { get; init; }       // 1-5 scale
-    public required int Clarity { get; init; }         // 1-5 scale
-    public required int Reasoning { get; init; }       // 1-5 scale
+    private int _accuracy;
+    private int _completeness;
+    private int _relevance;
+    private int _clarity;
+    private int _reasoning;
+
+    public required int Accuracy 
+    { 
+        get => _accuracy;
+        init 
+        {
+            Guard.Against.OutOfRange(value, nameof(Accuracy), 1, 5);
+            _accuracy = value;
+        }
+    }
+    
+    public required int Completeness 
+    { 
+        get => _completeness;
+        init 
+        {
+            Guard.Against.OutOfRange(value, nameof(Completeness), 1, 5);
+            _completeness = value;
+        }
+    }
+    
+    public required int Relevance 
+    { 
+        get => _relevance;
+        init 
+        {
+            Guard.Against.OutOfRange(value, nameof(Relevance), 1, 5);
+            _relevance = value;
+        }
+    }
+    
+    public required int Clarity 
+    { 
+        get => _clarity;
+        init 
+        {
+            Guard.Against.OutOfRange(value, nameof(Clarity), 1, 5);
+            _clarity = value;
+        }
+    }
+    
+    public required int Reasoning 
+    { 
+        get => _reasoning;
+        init 
+        {
+            Guard.Against.OutOfRange(value, nameof(Reasoning), 1, 5);
+            _reasoning = value;
+        }
+    }
+    
     public required string OverallComments { get; init; }
 
     public double AverageScore => (Accuracy + Completeness + Relevance + Clarity + Reasoning) / 5.0;
-
-    public EvaluationScore()
-    {
-        // Validate scores are in valid range
-        Guard.Against.OutOfRange(Accuracy, nameof(Accuracy), 1, 5);
-        Guard.Against.OutOfRange(Completeness, nameof(Completeness), 1, 5);
-        Guard.Against.OutOfRange(Relevance, nameof(Relevance), 1, 5);
-        Guard.Against.OutOfRange(Clarity, nameof(Clarity), 1, 5);
-        Guard.Against.OutOfRange(Reasoning, nameof(Reasoning), 1, 5);
-    }
 }
 
 /// <summary>
