@@ -130,9 +130,7 @@ public class YamlConfigurationLoader : IConfigurationLoader
 
         throw new ConfigurationException(configFilePath,
             "No server path specified and no default server file found");
-    }
-
-    // YAML data models
+    }    // YAML data models
     private class YamlEvaluationConfig
     {
         public YamlModelConfig? Model { get; set; }
