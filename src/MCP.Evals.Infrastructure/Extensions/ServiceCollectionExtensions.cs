@@ -67,8 +67,8 @@ public static class ServiceCollectionExtensions
         };
         services.AddSingleton(Options.Create(languageModelConfig));
 
-        // HTTP client for language models - not needed for Betalgo.OpenAI
-        // Betalgo.OpenAI handles HTTP client internally
+        // HTTP client for Azure OpenAI custom implementation
+        services.AddHttpClient();
 
         // Language model implementations (LSP - all can be substituted)
         services.AddSingleton<ILanguageModel>(provider =>
@@ -76,6 +76,18 @@ public static class ServiceCollectionExtensions
             var config = provider.GetRequiredService<IOptions<LanguageModelConfiguration>>();
             var logger = provider.GetRequiredService<ILogger<OpenAILanguageModel>>();
             var mcpClientService = provider.GetRequiredService<IMcpClientService>();
+
+            // Check for Azure OpenAI first
+            var azureEndpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
+            var azureApiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY");
+
+            if (!string.IsNullOrEmpty(azureEndpoint) && !string.IsNullOrEmpty(azureApiKey))
+            {
+                Console.WriteLine("[DEBUG] Detected Azure OpenAI configuration - using custom Azure OpenAI client");
+                var httpClient = provider.GetRequiredService<HttpClient>();
+                var azureLogger = provider.GetRequiredService<ILogger<AzureOpenAILanguageModel>>();
+                return new AzureOpenAILanguageModel(httpClient, config, azureLogger, mcpClientService, azureEndpoint, azureApiKey);
+            }
 
             return config.Value.Provider.ToLower() switch
             {
@@ -121,17 +133,38 @@ public static class ServiceCollectionExtensions
         Console.WriteLine($"[DEBUG] Config API Key: {(string.IsNullOrEmpty(config.Value.ApiKey) ? "NOT SET" : "SET")}");
 
         var envApiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
-        Console.WriteLine($"[DEBUG] Environment API Key: {(string.IsNullOrEmpty(envApiKey) ? "NOT SET" : "SET")}");
+        var azureApiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY");
+        var azureEndpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
 
-        var apiKey = config.Value.ApiKey ?? envApiKey;
+        Console.WriteLine($"[DEBUG] Environment API Key: {(string.IsNullOrEmpty(envApiKey) ? "NOT SET" : "SET")}");
+        Console.WriteLine($"[DEBUG] Azure API Key: {(string.IsNullOrEmpty(azureApiKey) ? "NOT SET" : "SET")}");
+        Console.WriteLine($"[DEBUG] Azure Endpoint: {(string.IsNullOrEmpty(azureEndpoint) ? "NOT SET" : "SET")}");
+
+        var apiKey = config.Value.ApiKey ?? azureApiKey ?? envApiKey;
         Console.WriteLine($"[DEBUG] Final API Key: {(string.IsNullOrEmpty(apiKey) ? "NOT SET" : "SET")}");
 
         if (string.IsNullOrEmpty(apiKey))
         {
-            throw new InvalidOperationException("OpenAI API key not configured. Set OPENAI_API_KEY environment variable or configure in options.");
+            throw new InvalidOperationException("OpenAI API key not configured. Set OPENAI_API_KEY or AZURE_OPENAI_API_KEY environment variable or configure in options.");
         }
 
-        var openAIClient = new OpenAIClient(apiKey);
+        OpenAIClient openAIClient;
+
+        // Check if we're using Azure OpenAI (has endpoint) or regular OpenAI
+        if (!string.IsNullOrEmpty(azureEndpoint))
+        {
+            Console.WriteLine($"[DEBUG] Using Azure OpenAI with endpoint: {azureEndpoint}");
+            var credential = new System.ClientModel.ApiKeyCredential(apiKey);
+            openAIClient = new OpenAIClient(credential, new OpenAIClientOptions
+            {
+                Endpoint = new Uri(azureEndpoint)
+            });
+        }
+        else
+        {
+            Console.WriteLine($"[DEBUG] Using OpenAI API");
+            openAIClient = new OpenAIClient(apiKey);
+        }
         return new OpenAILanguageModel(openAIClient, config, logger, mcpClientService);
     }
 

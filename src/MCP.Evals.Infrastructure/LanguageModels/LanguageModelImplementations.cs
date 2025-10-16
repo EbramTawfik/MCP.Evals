@@ -38,10 +38,12 @@ public class OpenAILanguageModel : ILanguageModel
         CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Generating response with OpenAI model: {ModelName}", _config.ModelName);
+        Console.WriteLine($"[DEBUG] About to call OpenAI with model: {_config.ModelName}");
 
         try
         {
             var chatClient = _openAIClient.GetChatClient(_config.ModelName ?? "gpt-3.5-turbo");
+            Console.WriteLine($"[DEBUG] Got chat client for model: {_config.ModelName ?? "gpt-3.5-turbo"}");
 
             var messages = new List<ChatMessage>
             {
@@ -55,7 +57,9 @@ public class OpenAILanguageModel : ILanguageModel
                 Temperature = (float)_config.Temperature
             };
 
+            Console.WriteLine($"[DEBUG] About to call CompleteChatAsync...");
             var response = await chatClient.CompleteChatAsync(messages, options, cancellationToken);
+            Console.WriteLine($"[DEBUG] CompleteChatAsync succeeded");
 
             var content = response.Value.Content[0].Text;
             _logger.LogDebug("Generated response of length: {Length}", content.Length);
@@ -63,6 +67,11 @@ public class OpenAILanguageModel : ILanguageModel
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[DEBUG] Exception in GenerateResponseAsync: {ex.GetType().Name}: {ex.Message}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"[DEBUG] Inner exception: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+            }
             _logger.LogError(ex, "Failed to generate response with OpenAI");
             throw new LanguageModelException("openai", _config.ModelName, "Response generation failed", ex);
         }
