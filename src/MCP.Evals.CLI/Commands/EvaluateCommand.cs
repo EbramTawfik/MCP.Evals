@@ -65,6 +65,9 @@ public class EvaluateCommand : Command
             // Build and configure the host
             var hostBuilder = Program.CreateHostBuilder();
 
+            // Configure verbose flag in the environment for services to use
+            Environment.SetEnvironmentVariable("MCP_EVALS_VERBOSE", verbose.ToString());
+
             if (verbose)
             {
                 hostBuilder.ConfigureLogging(logging =>
@@ -77,8 +80,11 @@ public class EvaluateCommand : Command
             {
                 hostBuilder.ConfigureLogging(logging =>
                 {
-                    logging.SetMinimumLevel(LogLevel.Error);
-                    logging.ClearProviders();
+                    logging.SetMinimumLevel(LogLevel.Warning);
+                    logging.AddConsole(options =>
+                    {
+                        options.LogToStandardErrorThreshold = LogLevel.Error;
+                    });
                 });
             }
 
@@ -119,6 +125,9 @@ public class EvaluateCommand : Command
 
             // Generate output
             await GenerateOutputAsync(results, outputPath, format, logger, stopwatch.Elapsed);
+
+            // Clean up environment variable
+            Environment.SetEnvironmentVariable("MCP_EVALS_VERBOSE", null);
 
             // Return exit code based on results
             var failedCount = results.Count(r => !r.IsSuccess);

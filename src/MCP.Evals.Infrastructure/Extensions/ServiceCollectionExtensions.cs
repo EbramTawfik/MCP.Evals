@@ -83,7 +83,12 @@ public static class ServiceCollectionExtensions
 
             if (!string.IsNullOrEmpty(azureEndpoint) && !string.IsNullOrEmpty(azureApiKey))
             {
-                Console.WriteLine("[DEBUG] Detected Azure OpenAI configuration - using custom Azure OpenAI client");
+                // Check if verbose mode is enabled
+                var isVerbose = bool.TryParse(Environment.GetEnvironmentVariable("MCP_EVALS_VERBOSE"), out var verboseResult) && verboseResult;
+                if (isVerbose)
+                {
+                    Console.WriteLine("[DEBUG] Detected Azure OpenAI configuration - using custom Azure OpenAI client");
+                }
                 var httpClient = provider.GetRequiredService<HttpClient>();
                 var azureLogger = provider.GetRequiredService<ILogger<AzureOpenAILanguageModel>>();
                 return new AzureOpenAILanguageModel(httpClient, config, azureLogger, mcpClientService, azureEndpoint, azureApiKey);

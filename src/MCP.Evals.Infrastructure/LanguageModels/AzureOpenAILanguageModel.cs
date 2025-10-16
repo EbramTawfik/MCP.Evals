@@ -46,14 +46,24 @@ public class AzureOpenAILanguageModel : ILanguageModel
         CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Generating response with Azure OpenAI model: {ModelName}", _config.ModelName);
-        Console.WriteLine($"[DEBUG] About to call Azure OpenAI with model: {_config.ModelName}");
+        
+        // Check if verbose mode is enabled
+        var isVerbose = bool.TryParse(Environment.GetEnvironmentVariable("MCP_EVALS_VERBOSE"), out var verboseResult) && verboseResult;
+        
+        if (isVerbose)
+        {
+            Console.WriteLine($"[DEBUG] About to call Azure OpenAI with model: {_config.ModelName}");
+        }
 
         try
         {
             var deploymentName = _config.ModelName ?? "gpt-4o";
             var url = $"{_endpoint}/openai/deployments/{deploymentName}/chat/completions?api-version={_apiVersion}";
 
-            Console.WriteLine($"[DEBUG] Azure OpenAI URL: {url}");
+            if (isVerbose)
+            {
+                Console.WriteLine($"[DEBUG] Azure OpenAI URL: {url}");
+            }
 
             var requestBody = new
             {
@@ -72,18 +82,27 @@ public class AzureOpenAILanguageModel : ILanguageModel
             _httpClient.DefaultRequestHeaders.Clear();
             _httpClient.DefaultRequestHeaders.Add("api-key", _apiKey);
 
-            Console.WriteLine($"[DEBUG] About to call Azure OpenAI HTTP endpoint...");
+            if (isVerbose)
+            {
+                Console.WriteLine($"[DEBUG] About to call Azure OpenAI HTTP endpoint...");
+            }
             var response = await _httpClient.PostAsync(url, content, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                Console.WriteLine($"[DEBUG] Azure OpenAI error response: {response.StatusCode} - {errorContent}");
+                if (isVerbose)
+                {
+                    Console.WriteLine($"[DEBUG] Azure OpenAI error response: {response.StatusCode} - {errorContent}");
+                }
                 throw new HttpRequestException($"Azure OpenAI API returned {response.StatusCode}: {errorContent}");
             }
 
             var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
-            Console.WriteLine($"[DEBUG] Azure OpenAI response received, length: {responseContent.Length}");
+            if (isVerbose)
+            {
+                Console.WriteLine($"[DEBUG] Azure OpenAI response received, length: {responseContent.Length}");
+            }
 
             var responseJson = JsonSerializer.Deserialize<JsonElement>(responseContent);
             var messageContent = responseJson.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
@@ -93,10 +112,13 @@ public class AzureOpenAILanguageModel : ILanguageModel
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[DEBUG] Exception in Azure OpenAI GenerateResponseAsync: {ex.GetType().Name}: {ex.Message}");
-            if (ex.InnerException != null)
+            if (isVerbose)
             {
-                Console.WriteLine($"[DEBUG] Inner exception: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+                Console.WriteLine($"[DEBUG] Exception in Azure OpenAI GenerateResponseAsync: {ex.GetType().Name}: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"[DEBUG] Inner exception: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+                }
             }
             _logger.LogError(ex, "Failed to generate response with Azure OpenAI");
             throw new LanguageModelException("azure-openai", _config.ModelName, "Response generation failed", ex);

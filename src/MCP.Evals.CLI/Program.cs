@@ -62,13 +62,23 @@ class Program
                 // Add MCP Evals services using our extension method
                 services.AddMcpEvaluations(options =>
                 {
+                    // Check if verbose mode is enabled
+                    var isVerbose = bool.TryParse(Environment.GetEnvironmentVariable("MCP_EVALS_VERBOSE"), out var verboseResult) && verboseResult;
+                    
                     // Configure based on environment variables or configuration
                     var openAiApiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
-                    Console.WriteLine($"[DEBUG] Reading API key from environment in Program.cs: {(string.IsNullOrEmpty(openAiApiKey) ? "NOT SET" : "SET")}");
+                    
+                    if (isVerbose)
+                    {
+                        Console.WriteLine($"[DEBUG] Reading API key from environment in Program.cs: {(string.IsNullOrEmpty(openAiApiKey) ? "NOT SET" : "SET")}");
+                    }
 
                     if (!string.IsNullOrEmpty(openAiApiKey))
                     {
-                        Console.WriteLine($"[DEBUG] Setting API key in configuration...");
+                        if (isVerbose)
+                        {
+                            Console.WriteLine($"[DEBUG] Setting API key in configuration...");
+                        }
                         // Create a new configuration with the API key
                         options.DefaultLanguageModel = new LanguageModelConfiguration
                         {
@@ -81,7 +91,10 @@ class Program
                     }
                     else
                     {
-                        Console.WriteLine($"[DEBUG] API key not found in environment, using default configuration");
+                        if (isVerbose)
+                        {
+                            Console.WriteLine($"[DEBUG] API key not found in environment, using default configuration");
+                        }
                     }
 
                     // Enable Prometheus metrics if requested
