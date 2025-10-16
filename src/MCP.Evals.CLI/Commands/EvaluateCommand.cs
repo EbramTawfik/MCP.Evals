@@ -25,8 +25,8 @@ public class EvaluateCommand : Command
 
         var formatOption = new Option<string>(
             ["--format", "-f"],
-            () => "json",
-            "Output format: json, summary, or detailed");
+            () => "clean",
+            "Output format: json, summary, detailed, or clean");
 
         var verboseOption = new Option<bool>(
             ["--verbose", "-v"],
@@ -73,13 +73,28 @@ public class EvaluateCommand : Command
                     logging.AddConsole();
                 });
             }
+            else
+            {
+                hostBuilder.ConfigureLogging(logging =>
+                {
+                    logging.SetMinimumLevel(LogLevel.Error);
+                    logging.ClearProviders();
+                });
+            }
 
             using var host = hostBuilder.Build();
 
             var logger = host.Services.GetRequiredService<ILogger<EvaluateCommand>>();
             var orchestrator = host.Services.GetRequiredService<IEvaluationOrchestrator>();
 
-            logger.LogInformation("Starting MCP evaluations from: {ConfigPath}", configPath);
+            if (verbose)
+            {
+                logger.LogInformation("Starting MCP evaluations from: {ConfigPath}", configPath);
+            }
+            else
+            {
+                Console.WriteLine($"🚀 Starting evaluations from: {Path.GetFileName(configPath)}");
+            }
 
             if (!File.Exists(configPath))
             {
@@ -139,6 +154,7 @@ public class EvaluateCommand : Command
             "json" => GenerateJsonOutput(results, totalDuration),
             "summary" => GenerateSummaryOutput(results, totalDuration),
             "detailed" => GenerateDetailedOutput(results, totalDuration),
+            "clean" => GenerateCleanOutput(results, totalDuration),
             _ => throw new ArgumentException($"Unsupported output format: {format}")
         };
 
@@ -230,6 +246,60 @@ public class EvaluateCommand : Command
         }
 
         return summary;
+    }
+
+    private static string GenerateCleanOutput(IReadOnlyList<Core.Models.EvaluationResult> results, TimeSpan totalDuration)
+    {
+        var output = "\n🔍 MCP Evaluation Results\n";
+        output += new string('=', 50) + "\n\n";
+
+        // Show individual results as they complete
+        foreach (var result in results)
+        {
+            if (result.IsSuccess)
+            {
+                output += $"✅ {result.Name}\n";
+                output += $"   📊 Score: {result.Score.AverageScore:F1}/5.0 ({GetScoreEmoji(result.Score.AverageScore)})\n";
+                output += $"   ⏱️  Duration: {result.Duration.TotalSeconds:F1}s\n";
+                output += $"   📝 Details: Accuracy:{result.Score.Accuracy} Completeness:{result.Score.Completeness} Relevance:{result.Score.Relevance} Clarity:{result.Score.Clarity} Reasoning:{result.Score.Reasoning}\n\n";
+            }
+            else
+            {
+                output += $"❌ {result.Name}\n";
+                output += $"   🚫 Error: {result.ErrorMessage}\n";
+                output += $"   ⏱️  Duration: {result.Duration.TotalSeconds:F1}s\n\n";
+            }
+        }
+
+        // Summary section
+        var successful = results.Where(r => r.IsSuccess).ToList();
+        var failed = results.Where(r => !r.IsSuccess).ToList();
+        var averageScore = successful.DefaultIfEmpty().Average(r => r?.Score.AverageScore ?? 0);
+
+        output += new string('=', 50) + "\n";
+        output += "📊 SUMMARY\n";
+        output += new string('=', 50) + "\n";
+        output += $"📈 Total Evaluations: {results.Count}\n";
+        output += $"✅ Successful: {successful.Count}\n";
+        output += $"❌ Failed: {failed.Count}\n";
+        output += $"🎯 Success Rate: {(successful.Count / (double)results.Count):P1}\n";
+        output += $"⭐ Average Score: {averageScore:F2}/5.0 ({GetScoreEmoji(averageScore)})\n";
+        output += $"⏱️  Total Duration: {totalDuration.TotalSeconds:F1} seconds\n";
+        output += new string('=', 50) + "\n";
+
+        return output;
+    }
+
+    private static string GetScoreEmoji(double score)
+    {
+        return score switch
+        {
+            >= 4.5 => "🌟 Excellent",
+            >= 3.5 => "🟢 Good",
+            >= 2.5 => "🟡 Fair",
+            >= 1.5 => "🟠 Poor",
+            _ => "🔴 Critical"
+        };
     }
 
     private static string GenerateDetailedOutput(IReadOnlyList<Core.Models.EvaluationResult> results, TimeSpan totalDuration)
