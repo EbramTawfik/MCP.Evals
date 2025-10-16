@@ -28,27 +28,19 @@ public class EvaluationRequestValidator : AbstractValidator<EvaluationRequest>
             .MaximumLength(10000)
             .WithMessage("Evaluation prompt must not exceed 10000 characters");
 
-        RuleFor(x => x.ServerPath)
-            .NotEmpty()
-            .WithMessage("Server path is required")
-            .Must(BeValidPath)
-            .WithMessage("Server path must be a valid file path");
+        // Server configuration is now optional at the evaluation level (can use global config)
+        RuleFor(x => x.Server)
+            .SetValidator(new ServerConfigurationValidator()!)
+            .When(x => x.Server != null);
+
+        // HTTP transport is not allowed at evaluation level - must be global
+        RuleFor(x => x.Server)
+            .Must(server => server == null || server.Transport?.ToLower() != "http")
+            .WithMessage("HTTP transport configuration must be defined globally, not per-evaluation. Move HTTP server configuration to the global 'server' section.")
+            .When(x => x.Server != null);
     }
 
-    private static bool BeValidPath(string path)
-    {
-        try
-        {
-            // For testing purposes, accept any non-empty path that looks like a file path
-            // In a real scenario, you might want to check if file exists
-            return !string.IsNullOrWhiteSpace(path) &&
-                   (path.Contains('/') || path.Contains('\\') || Path.IsPathFullyQualified(path));
-        }
-        catch
-        {
-            return false;
-        }
-    }
+
 }
 
 /// <summary>
@@ -62,6 +54,11 @@ public class EvaluationConfigurationValidator : AbstractValidator<EvaluationConf
             .NotNull()
             .WithMessage("Language model configuration is required")
             .SetValidator(new LanguageModelConfigurationValidator());
+
+        RuleFor(x => x.Server)
+            .NotNull()
+            .WithMessage("Server configuration is required")
+            .SetValidator(new ServerConfigurationValidator());
 
         RuleFor(x => x.Evaluations)
             .NotNull()
@@ -89,7 +86,7 @@ public class LanguageModelConfigurationValidator : AbstractValidator<LanguageMod
             .Must(provider => !string.IsNullOrEmpty(provider) && ValidProviders.Contains(provider.ToLower()))
             .WithMessage($"Provider must be one of: {string.Join(", ", ValidProviders)}");
 
-        RuleFor(x => x.ModelName)
+        RuleFor(x => x.Name)
             .NotEmpty()
             .WithMessage("Model name is required");
 
@@ -116,5 +113,79 @@ public class LanguageModelConfigurationValidator : AbstractValidator<LanguageMod
             .WithMessage("Timeout must be greater than zero")
             .LessThanOrEqualTo(TimeSpan.FromMinutes(10))
             .WithMessage("Timeout must not exceed 10 minutes");
+    }
+}
+
+/// <summary>
+/// Validator for ServerConfiguration
+/// </summary>
+public class ServerConfigurationValidator : AbstractValidator<ServerConfiguration>
+{
+    private static readonly string[] ValidTransports = { "stdio", "http" };
+
+    public ServerConfigurationValidator()
+    {
+        RuleFor(x => x.Transport)
+            .NotEmpty()
+            .WithMessage("Transport type is required")
+            .Must(transport => !string.IsNullOrEmpty(transport) && ValidTransports.Contains(transport.ToLower()))
+            .WithMessage($"Transport must be one of: {string.Join(", ", ValidTransports)}");
+
+        // For stdio transport, Path is required
+        RuleFor(x => x.Path)
+            .NotEmpty()
+            .WithMessage("Server path is required for stdio transport")
+            .When(x => x.Transport?.ToLower() == "stdio");
+
+        // For HTTP transport, either Path or Url is required (or both)
+        RuleFor(x => x)
+            .Must(config => !string.IsNullOrEmpty(config.Path) || !string.IsNullOrEmpty(config.Url))
+            .WithMessage("For HTTP transport, either Path (server file) or Url (direct connection) must be specified")
+            .When(x => x.Transport?.ToLower() == "http");
+
+        // Validate URL format when provided
+        RuleFor(x => x.Url)
+            .Must(BeValidHttpUrl!)
+            .WithMessage("Url must be a valid HTTP or HTTPS URL")
+            .When(x => !string.IsNullOrEmpty(x.Url));
+
+        // Validate Path format when provided
+        RuleFor(x => x.Path)
+            .Must(BeValidPath!)
+            .WithMessage("Path must be a valid file path")
+            .When(x => !string.IsNullOrEmpty(x.Path));
+
+        RuleFor(x => x.Timeout)
+            .GreaterThan(TimeSpan.Zero)
+            .WithMessage("Timeout must be greater than zero")
+            .LessThanOrEqualTo(TimeSpan.FromMinutes(10))
+            .WithMessage("Timeout must not exceed 10 minutes");
+    }
+
+    private static bool BeValidPath(string path)
+    {
+        try
+        {
+            // Accept any non-empty path that looks like a file path
+            return !string.IsNullOrWhiteSpace(path) &&
+                   (path.Contains('/') || path.Contains('\\') || Path.IsPathFullyQualified(path));
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool BeValidHttpUrl(string url)
+    {
+        try
+        {
+            return Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
+                   (uri.Scheme == "http" || uri.Scheme == "https");
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

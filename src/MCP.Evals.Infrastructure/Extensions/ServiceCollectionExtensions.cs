@@ -60,7 +60,7 @@ public static class ServiceCollectionExtensions
         var languageModelConfig = new LanguageModelConfiguration
         {
             Provider = options.DefaultLanguageModel.Provider,
-            ModelName = options.DefaultLanguageModel.ModelName,
+            Name = options.DefaultLanguageModel.Name,
             ApiKey = options.DefaultLanguageModel.ApiKey,
             MaxTokens = options.DefaultLanguageModel.MaxTokens,
             Temperature = options.DefaultLanguageModel.Temperature
@@ -198,7 +198,7 @@ public class McpEvalsOptions
     public LanguageModelConfiguration DefaultLanguageModel { get; set; } = new()
     {
         Provider = "openai",
-        ModelName = "gpt-4o",
+        Name = "gpt-4o",
         MaxTokens = 4000,
         Temperature = 0.1
     };

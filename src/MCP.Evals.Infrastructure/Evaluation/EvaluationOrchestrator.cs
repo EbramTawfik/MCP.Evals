@@ -36,6 +36,14 @@ public class EvaluationOrchestrator : IEvaluationOrchestrator
         EvaluationRequest request,
         CancellationToken cancellationToken = default)
     {
+        throw new NotSupportedException("RunEvaluationAsync with single request is not supported. Use RunEvaluationAsync with EvaluationConfiguration instead.");
+    }
+
+    public async Task<EvaluationResult> RunEvaluationAsync(
+        EvaluationRequest request,
+        ServerConfiguration globalServerConfig,
+        CancellationToken cancellationToken = default)
+    {
         _logger.LogInformation("Starting evaluation: {EvaluationName}", request.Name);
 
         var stopwatch = Stopwatch.StartNew();
@@ -43,17 +51,20 @@ public class EvaluationOrchestrator : IEvaluationOrchestrator
 
         try
         {
+            // Use evaluation-specific server config if available, otherwise use global config
+            var serverConfig = request.Server ?? globalServerConfig;
+
             // Test MCP server connectivity first
-            var isConnected = await _mcpClientService.TestConnectionAsync(request.ServerPath, cancellationToken);
+            var isConnected = await _mcpClientService.TestConnectionAsync(serverConfig, cancellationToken);
             if (!isConnected)
             {
-                throw new McpClientException(request.ServerPath, "Unable to connect to MCP server");
+                throw new McpClientException(serverConfig.Path ?? serverConfig.Url ?? "Unknown", "Unable to connect to MCP server");
             }
 
             // Execute the tool interaction
             _logger.LogDebug("Executing tool interaction for evaluation: {EvaluationName}", request.Name);
             var response = await _mcpClientService.ExecuteToolInteractionAsync(
-                request.ServerPath,
+                serverConfig,
                 request.Prompt,
                 cancellationToken);
 
@@ -98,11 +109,11 @@ public class EvaluationOrchestrator : IEvaluationOrchestrator
                 Response = string.Empty,
                 Score = new EvaluationScore
                 {
-                    Accuracy = 0,
-                    Completeness = 0,
-                    Relevance = 0,
-                    Clarity = 0,
-                    Reasoning = 0,
+                    Accuracy = 1,
+                    Completeness = 1,
+                    Relevance = 1,
+                    Clarity = 1,
+                    Reasoning = 1,
                     OverallComments = $"Evaluation failed: {ex.Message}"
                 },
                 Duration = stopwatch.Elapsed,
@@ -125,7 +136,7 @@ public class EvaluationOrchestrator : IEvaluationOrchestrator
             await semaphore.WaitAsync(cancellationToken);
             try
             {
-                return await RunEvaluationAsync(evaluation, cancellationToken);
+                return await RunEvaluationAsync(evaluation, configuration.Server, cancellationToken);
             }
             finally
             {

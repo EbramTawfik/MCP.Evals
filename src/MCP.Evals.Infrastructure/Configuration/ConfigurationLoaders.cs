@@ -75,7 +75,7 @@ public class YamlConfigurationLoader : IConfigurationLoader
             ? new LanguageModelConfiguration
             {
                 Provider = yamlConfig.Model.Provider ?? "openai",
-                ModelName = yamlConfig.Model.Name ?? "gpt-4o",
+                Name = yamlConfig.Model.Name ?? "gpt-4o",
                 ApiKey = yamlConfig.Model.ApiKey,
                 MaxTokens = yamlConfig.Model.MaxTokens ?? 4000,
                 Temperature = yamlConfig.Model.Temperature ?? 0.1
@@ -83,8 +83,23 @@ public class YamlConfigurationLoader : IConfigurationLoader
             : new LanguageModelConfiguration
             {
                 Provider = "openai",
-                ModelName = "gpt-4o"
+                Name = "gpt-4o"
             };
+
+        // Convert server configuration
+        var serverConfig = yamlConfig.Server != null
+            ? new ServerConfiguration
+            {
+                Transport = yamlConfig.Server.Transport ?? "stdio",
+                Path = yamlConfig.Server.Path != null ? ResolvePath(yamlConfig.Server.Path, filePath) : null,
+                Url = yamlConfig.Server.Url,
+                Args = yamlConfig.Server.Args,
+                Environment = yamlConfig.Server.Environment,
+                WorkingDirectory = yamlConfig.Server.WorkingDirectory != null
+                    ? ResolvePath(yamlConfig.Server.WorkingDirectory, filePath)
+                    : null,
+            }
+            : throw new InvalidOperationException("Server configuration is required");
 
         // Convert evaluations
         var evaluations = yamlConfig.Evals.Select(eval => new EvaluationRequest
@@ -92,48 +107,50 @@ public class YamlConfigurationLoader : IConfigurationLoader
             Name = eval.Name ?? "Unnamed Evaluation",
             Description = eval.Description ?? "No description provided",
             Prompt = eval.Prompt ?? throw new InvalidOperationException("Prompt is required"),
-            ServerPath = DetermineServerPath(eval, filePath),
-            ExpectedResult = eval.ExpectedResult
+            ExpectedResult = eval.ExpectedResult,
+            Server = eval.Server != null ? new ServerConfiguration
+            {
+                Transport = eval.Server.Transport ?? serverConfig.Transport,
+                Path = eval.Server.Path != null ? ResolvePath(eval.Server.Path, filePath) : serverConfig.Path,
+                Url = eval.Server.Url ?? serverConfig.Url,
+                Args = eval.Server.Args ?? serverConfig.Args,
+                Environment = eval.Server.Environment ?? serverConfig.Environment,
+                WorkingDirectory = eval.Server.WorkingDirectory != null
+                    ? ResolvePath(eval.Server.WorkingDirectory, filePath)
+                    : serverConfig.WorkingDirectory,
+                Timeout = eval.Server.Timeout != null
+                    ? TimeSpan.FromSeconds(eval.Server.Timeout.Value)
+                    : serverConfig.Timeout
+            } : null
         }).ToList();
 
         return new EvaluationConfiguration
         {
             Model = modelConfig,
+            Server = serverConfig,
             Evaluations = evaluations,
             Name = yamlConfig.Name,
             Description = yamlConfig.Description
         };
     }
 
-    private static string DetermineServerPath(YamlEvaluation eval, string configFilePath)
+    private static string ResolvePath(string path, string configFilePath)
     {
-        // If server_path is specified in the evaluation, use it
-        if (!string.IsNullOrEmpty(eval.ServerPath))
+        if (Path.IsPathFullyQualified(path))
         {
-            return Path.IsPathFullyQualified(eval.ServerPath)
-                ? eval.ServerPath
-                : Path.Combine(Path.GetDirectoryName(configFilePath)!, eval.ServerPath);
+            return path;
         }
 
-        // Otherwise, look for a server file in the same directory as the config
-        var configDir = Path.GetDirectoryName(configFilePath)!;
-        var possibleServerFiles = new[] { "index.ts", "index.js", "server.ts", "server.js", "main.py" };
+        // Resolve relative path based on config file location
+        var configDir = Path.GetDirectoryName(configFilePath) ?? Directory.GetCurrentDirectory();
+        return Path.GetFullPath(Path.Combine(configDir, path));
+    }
 
-        foreach (var serverFile in possibleServerFiles)
-        {
-            var serverPath = Path.Combine(configDir, serverFile);
-            if (File.Exists(serverPath))
-            {
-                return serverPath;
-            }
-        }
-
-        throw new ConfigurationException(configFilePath,
-            "No server path specified and no default server file found");
-    }    // YAML data models
+    // YAML data models
     private class YamlEvaluationConfig
     {
         public YamlModelConfig? Model { get; set; }
+        public YamlServerConfig? Server { get; set; }
         public List<YamlEvaluation> Evals { get; set; } = new();
         public string? Name { get; set; }
         public string? Description { get; set; }
@@ -148,13 +165,25 @@ public class YamlConfigurationLoader : IConfigurationLoader
         public double? Temperature { get; set; }
     }
 
+    private class YamlServerConfig
+    {
+        public string? Transport { get; set; }
+        public string? Path { get; set; }
+        public string? Url { get; set; }
+        public string[]? Args { get; set; }
+        public Dictionary<string, string>? Environment { get; set; }
+        public string? WorkingDirectory { get; set; }
+        public int? Port { get; set; }
+        public double? Timeout { get; set; }
+    }
+
     private class YamlEvaluation
     {
         public string? Name { get; set; }
         public string? Description { get; set; }
         public string? Prompt { get; set; }
-        public string? ServerPath { get; set; }
         public string? ExpectedResult { get; set; }
+        public YamlServerConfig? Server { get; set; } // Optional evaluation-specific server override
     }
 }
 

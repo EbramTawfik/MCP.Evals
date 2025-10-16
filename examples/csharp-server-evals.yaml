@@ -6,22 +6,23 @@ model:
   provider: openai
   name: gpt-4o
 
+server:
+  transport: stdio
+  path: "../mcp-sample-projects/CSharpMcpSample/bin/Debug/net9.0/win-x64/CSharpMcpSample.exe"
+
 # List of evaluations to run against the C# server
 evals:
   - name: csharp_add_basic
     description: Test basic addition using the Add tool
     prompt: "Use the Add tool to calculate 5 + 3. What is the result?"
     expectedResult: "Should return 8 as the sum of 5 and 3"
-    serverPath: "../mcp-sample-projects/CSharpMcpSample/bin/Debug/net9.0/win-x64/CSharpMcpSample.exe"
 
   - name: csharp_multiply_basic
     description: Test basic multiplication using the Multiply tool
     prompt: "Use the Multiply tool to calculate 4 * 7. What is the result?"
     expectedResult: "Should return 28 as the product of 4 and 7"
-    serverPath: "../mcp-sample-projects/CSharpMcpSample/bin/Debug/net9.0/win-x64/CSharpMcpSample.exe"
 
   - name: csharp_echo_basic
     description: Test echo functionality
     prompt: "Use the Echo tool to echo the message 'Hello MCP World'"
     expectedResult: "Should return 'C# Echo: Hello MCP World'"
-    serverPath: "../mcp-sample-projects/CSharpMcpSample/bin/Debug/net9.0/win-x64/CSharpMcpSample.exe"

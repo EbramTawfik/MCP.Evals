@@ -37,13 +37,13 @@ public class OpenAILanguageModel : ILanguageModel
         string userPrompt,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("Generating response with OpenAI model: {ModelName}", _config.ModelName);
-        Console.WriteLine($"[DEBUG] About to call OpenAI with model: {_config.ModelName}");
+        _logger.LogDebug("Generating response with OpenAI model: {ModelName}", _config.Name);
+        Console.WriteLine($"[DEBUG] About to call OpenAI with model: {_config.Name}");
 
         try
         {
-            var chatClient = _openAIClient.GetChatClient(_config.ModelName ?? "gpt-3.5-turbo");
-            Console.WriteLine($"[DEBUG] Got chat client for model: {_config.ModelName ?? "gpt-3.5-turbo"}");
+            var chatClient = _openAIClient.GetChatClient(_config.Name ?? "gpt-3.5-turbo");
+            Console.WriteLine($"[DEBUG] Got chat client for model: {_config.Name ?? "gpt-3.5-turbo"}");
 
             var messages = new List<ChatMessage>
             {
@@ -73,7 +73,7 @@ public class OpenAILanguageModel : ILanguageModel
                 Console.WriteLine($"[DEBUG] Inner exception: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
             }
             _logger.LogError(ex, "Failed to generate response with OpenAI");
-            throw new LanguageModelException("openai", _config.ModelName, "Response generation failed", ex);
+            throw new LanguageModelException("openai", _config.Name, "Response generation failed", ex);
         }
     }
 
@@ -91,8 +91,15 @@ public class OpenAILanguageModel : ILanguageModel
             // In a more sophisticated implementation, we would integrate MCP tools
             // directly with OpenAI's function calling capabilities
 
+            // Create a ServerConfiguration from the legacy serverPath
+            var serverConfig = new ServerConfiguration
+            {
+                Transport = "stdio", // Default to stdio for backward compatibility
+                Path = serverPath
+            };
+
             var toolResponse = await _mcpClientService.ExecuteToolInteractionAsync(
-                serverPath, userPrompt, cancellationToken);
+                serverConfig, userPrompt, cancellationToken);
 
             // Use the basic generate method to process the tool response
             var evaluationPrompt = $"""
@@ -109,7 +116,7 @@ public class OpenAILanguageModel : ILanguageModel
         catch (Exception ex) when (ex is not LanguageModelException)
         {
             _logger.LogError(ex, "Failed to generate response with tools");
-            throw new LanguageModelException("openai", _config.ModelName, "Tool-based response generation failed", ex);
+            throw new LanguageModelException("openai", _config.Name, "Tool-based response generation failed", ex);
         }
     }
 }
@@ -142,7 +149,7 @@ public class AnthropicLanguageModel : ILanguageModel
         string userPrompt,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("Generating response with Anthropic model: {ModelName}", _config.ModelName);
+        _logger.LogDebug("Generating response with Anthropic model: {ModelName}", _config.Name);
 
         try
         {
@@ -157,7 +164,7 @@ public class AnthropicLanguageModel : ILanguageModel
         catch (Exception ex) when (ex is not LanguageModelException)
         {
             _logger.LogError(ex, "Failed to generate response with Anthropic");
-            throw new LanguageModelException("anthropic", _config.ModelName, "Response generation failed", ex);
+            throw new LanguageModelException("anthropic", _config.Name, "Response generation failed", ex);
         }
     }
 
@@ -171,8 +178,15 @@ public class AnthropicLanguageModel : ILanguageModel
 
         try
         {
+            // Create a ServerConfiguration from the legacy serverPath
+            var serverConfig = new ServerConfiguration
+            {
+                Transport = "stdio", // Default to stdio for backward compatibility
+                Path = serverPath
+            };
+
             var toolResponse = await _mcpClientService.ExecuteToolInteractionAsync(
-                serverPath, userPrompt, cancellationToken);
+                serverConfig, userPrompt, cancellationToken);
 
             var evaluationPrompt = $"""
                 Based on the following tool interaction, provide a comprehensive response:
@@ -188,7 +202,7 @@ public class AnthropicLanguageModel : ILanguageModel
         catch (Exception ex) when (ex is not LanguageModelException)
         {
             _logger.LogError(ex, "Failed to generate response with tools using Anthropic");
-            throw new LanguageModelException("anthropic", _config.ModelName, "Tool-based response generation failed", ex);
+            throw new LanguageModelException("anthropic", _config.Name, "Tool-based response generation failed", ex);
         }
     }
 }

@@ -19,8 +19,7 @@ public class EvaluationValidatorsTests
         {
             Name = "Test Evaluation",
             Description = "A test evaluation",
-            Prompt = "What is the weather?",
-            ServerPath = "/path/to/server.ts"
+            Prompt = "What is the weather?"
         };
 
         // Act
@@ -42,8 +41,7 @@ public class EvaluationValidatorsTests
         {
             Name = name!,
             Description = "A test evaluation",
-            Prompt = "What is the weather?",
-            ServerPath = "/path/to/server.ts"
+            Prompt = "What is the weather?"
         };
 
         // Act
@@ -63,8 +61,7 @@ public class EvaluationValidatorsTests
         {
             Name = new string('A', 101), // 101 characters
             Description = "A test evaluation",
-            Prompt = "What is the weather?",
-            ServerPath = "/path/to/server.ts"
+            Prompt = "What is the weather?"
         };
 
         // Act
@@ -83,7 +80,7 @@ public class EvaluationValidatorsTests
         var config = new LanguageModelConfiguration
         {
             Provider = "openai",
-            ModelName = "gpt-4o",
+            Name = "gpt-4o",
             MaxTokens = 4000,
             Temperature = 0.1,
             MaxRetries = 3,
@@ -109,7 +106,7 @@ public class EvaluationValidatorsTests
         var config = new LanguageModelConfiguration
         {
             Provider = provider!,
-            ModelName = "gpt-4o"
+            Name = "gpt-4o"
         };
 
         // Act
@@ -131,7 +128,7 @@ public class EvaluationValidatorsTests
         var config = new LanguageModelConfiguration
         {
             Provider = "openai",
-            ModelName = "gpt-4o",
+            Name = "gpt-4o",
             MaxTokens = maxTokens
         };
 
@@ -152,7 +149,7 @@ public class EvaluationValidatorsTests
         var config = new LanguageModelConfiguration
         {
             Provider = "openai",
-            ModelName = "gpt-4o",
+            Name = "gpt-4o",
             Temperature = temperature
         };
 

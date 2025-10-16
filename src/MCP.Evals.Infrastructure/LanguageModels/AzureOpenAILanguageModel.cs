@@ -45,19 +45,19 @@ public class AzureOpenAILanguageModel : ILanguageModel
         string userPrompt,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("Generating response with Azure OpenAI model: {ModelName}", _config.ModelName);
-        
+        _logger.LogDebug("Generating response with Azure OpenAI model: {ModelName}", _config.Name);
+
         // Check if verbose mode is enabled
         var isVerbose = bool.TryParse(Environment.GetEnvironmentVariable("MCP_EVALS_VERBOSE"), out var verboseResult) && verboseResult;
-        
+
         if (isVerbose)
         {
-            Console.WriteLine($"[DEBUG] About to call Azure OpenAI with model: {_config.ModelName}");
+            Console.WriteLine($"[DEBUG] About to call Azure OpenAI with model: {_config.Name}");
         }
 
         try
         {
-            var deploymentName = _config.ModelName ?? "gpt-4o";
+            var deploymentName = _config.Name ?? "gpt-4o";
             var url = $"{_endpoint}/openai/deployments/{deploymentName}/chat/completions?api-version={_apiVersion}";
 
             if (isVerbose)
@@ -80,13 +80,13 @@ public class AzureOpenAILanguageModel : ILanguageModel
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             _httpClient.DefaultRequestHeaders.Clear();
-            
+
             // Ensure API key is not null before adding to headers
             if (string.IsNullOrEmpty(_apiKey))
             {
                 throw new InvalidOperationException("Azure OpenAI API key is null or empty. Please set the AZURE_OPENAI_API_KEY environment variable.");
             }
-            
+
             _httpClient.DefaultRequestHeaders.Add("api-key", _apiKey);
 
             if (isVerbose)
@@ -128,7 +128,7 @@ public class AzureOpenAILanguageModel : ILanguageModel
                 }
             }
             _logger.LogError(ex, "Failed to generate response with Azure OpenAI");
-            throw new LanguageModelException("azure-openai", _config.ModelName, "Response generation failed", ex);
+            throw new LanguageModelException("azure-openai", _config.Name, "Response generation failed", ex);
         }
     }
 
@@ -142,8 +142,15 @@ public class AzureOpenAILanguageModel : ILanguageModel
 
         try
         {
+            // Create a ServerConfiguration from the legacy serverPath
+            var serverConfig = new ServerConfiguration
+            {
+                Transport = "stdio", // Default to stdio for backward compatibility
+                Path = serverPath
+            };
+
             var toolResponse = await _mcpClientService.ExecuteToolInteractionAsync(
-                serverPath, userPrompt, cancellationToken);
+                serverConfig, userPrompt, cancellationToken);
 
             var evaluationPrompt = $"""
                 Based on the following tool interaction, provide a comprehensive response:
@@ -159,7 +166,7 @@ public class AzureOpenAILanguageModel : ILanguageModel
         catch (Exception ex) when (ex is not LanguageModelException)
         {
             _logger.LogError(ex, "Failed to generate response with tools using Azure OpenAI");
-            throw new LanguageModelException("azure-openai", _config.ModelName, "Tool-based response generation failed", ex);
+            throw new LanguageModelException("azure-openai", _config.Name, "Tool-based response generation failed", ex);
         }
     }
 }

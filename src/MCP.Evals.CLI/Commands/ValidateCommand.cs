@@ -86,7 +86,7 @@ public class ValidateCommand : Command
                 if (verbose)
                 {
                     Console.WriteLine($"   - Found {configuration.Evaluations.Count} evaluations");
-                    Console.WriteLine($"   - Language model: {configuration.Model.Provider}/{configuration.Model.ModelName}");
+                    Console.WriteLine($"   - Language model: {configuration.Model.Provider}/{configuration.Model.Name}");
                 }
             }
             catch (Exception ex)
@@ -141,11 +141,19 @@ public class ValidateCommand : Command
 
             // Check server file existence
             var missingServers = new List<string>();
+
+            // Check global server configuration
+            if (!IsValidServerPath(configuration.Server))
+            {
+                missingServers.Add($"Global server: {GetServerPathError(configuration.Server)}");
+            }
+
+            // Check evaluation-specific server overrides
             foreach (var evaluation in configuration.Evaluations)
             {
-                if (!File.Exists(evaluation.ServerPath))
+                if (evaluation.Server != null && !IsValidServerPath(evaluation.Server))
                 {
-                    missingServers.Add($"Evaluation '{evaluation.Name}': Server file not found at {evaluation.ServerPath}");
+                    missingServers.Add($"Evaluation '{evaluation.Name}': {GetServerPathError(evaluation.Server)}");
                 }
             }
 
@@ -177,8 +185,10 @@ public class ValidateCommand : Command
 
                     try
                     {
-                        var isConnected = await mcpClientService.TestConnectionAsync(evaluation.ServerPath);
-                        connectivityResults.Add((evaluation.Name, evaluation.ServerPath, isConnected, null));
+                        // Use evaluation-specific server config if available, otherwise use global config
+                        var serverConfig = evaluation.Server ?? configuration.Server;
+                        var isConnected = await mcpClientService.TestConnectionAsync(serverConfig);
+                        connectivityResults.Add((evaluation.Name, serverConfig.Path ?? serverConfig.Url ?? "Unknown", isConnected, null));
 
                         if (isConnected)
                         {
@@ -191,7 +201,8 @@ public class ValidateCommand : Command
                     }
                     catch (Exception ex)
                     {
-                        connectivityResults.Add((evaluation.Name, evaluation.ServerPath, false, ex.Message));
+                        var serverConfig = evaluation.Server ?? configuration.Server;
+                        connectivityResults.Add((evaluation.Name, serverConfig.Path ?? serverConfig.Url ?? "Unknown", false, ex.Message));
                         Console.WriteLine($"   ❌ {evaluation.Name}: {ex.Message}");
                     }
                 }
@@ -227,6 +238,71 @@ public class ValidateCommand : Command
                 Console.Error.WriteLine($"Stack trace: {ex.StackTrace}");
             }
             return 1;
+        }
+    }
+
+    private static bool IsValidServerPath(ServerConfiguration server)
+    {
+        if (server.Transport == "http")
+        {
+            // For HTTP transport, URL is always required
+            if (string.IsNullOrEmpty(server.Url))
+            {
+                return false; // URL is required for HTTP transport
+            }
+
+            // Check if URL is valid
+            if (!Uri.TryCreate(server.Url, UriKind.Absolute, out var uri) ||
+                (uri.Scheme != "http" && uri.Scheme != "https"))
+            {
+                return false; // Invalid URL
+            }
+
+            // If path is provided, check if server file exists (server startup mode)
+            // If no path provided, assume direct URL connection (server already running)
+            if (!string.IsNullOrEmpty(server.Path))
+            {
+                return File.Exists(server.Path);
+            }
+
+            return true; // Direct URL connection is valid
+        }
+
+        // For stdio transport, path is required and file must exist
+        return !string.IsNullOrEmpty(server.Path) && File.Exists(server.Path);
+    }
+
+    private static string GetServerPathError(ServerConfiguration server)
+    {
+        if (server.Transport == "http")
+        {
+            var errors = new List<string>();
+
+            if (string.IsNullOrEmpty(server.Url))
+            {
+                errors.Add("URL is required for HTTP transport");
+            }
+            else if (!Uri.TryCreate(server.Url, UriKind.Absolute, out var uri) ||
+                     (uri.Scheme != "http" && uri.Scheme != "https"))
+            {
+                errors.Add($"Invalid URL: {server.Url}");
+            }
+
+            // Only check path if it's provided (optional for HTTP)
+            if (!string.IsNullOrEmpty(server.Path) && !File.Exists(server.Path))
+            {
+                errors.Add($"Server file not found at {server.Path}");
+            }
+
+            return errors.Any() ? string.Join("; ", errors) : "Valid HTTP configuration";
+        }
+        else
+        {
+            if (string.IsNullOrEmpty(server.Path))
+            {
+                return "Path is required for stdio transport";
+            }
+            return $"Server file not found at {server.Path}";
         }
     }
 }

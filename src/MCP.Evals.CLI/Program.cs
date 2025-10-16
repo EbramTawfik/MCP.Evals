@@ -64,10 +64,10 @@ class Program
                 {
                     // Check if verbose mode is enabled
                     var isVerbose = bool.TryParse(Environment.GetEnvironmentVariable("MCP_EVALS_VERBOSE"), out var verboseResult) && verboseResult;
-                    
+
                     // Configure based on environment variables or configuration
                     var openAiApiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
-                    
+
                     if (isVerbose)
                     {
                         Console.WriteLine($"[DEBUG] Reading API key from environment in Program.cs: {(string.IsNullOrEmpty(openAiApiKey) ? "NOT SET" : "SET")}");
@@ -83,7 +83,7 @@ class Program
                         options.DefaultLanguageModel = new LanguageModelConfiguration
                         {
                             Provider = options.DefaultLanguageModel.Provider,
-                            ModelName = options.DefaultLanguageModel.ModelName,
+                            Name = options.DefaultLanguageModel.Name,
                             ApiKey = openAiApiKey,
                             MaxTokens = options.DefaultLanguageModel.MaxTokens,
                             Temperature = options.DefaultLanguageModel.Temperature

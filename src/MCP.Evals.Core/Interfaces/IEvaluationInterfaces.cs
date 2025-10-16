@@ -33,13 +33,25 @@ public interface IMcpClientService
     /// Execute a tool interaction workflow with an MCP server
     /// </summary>
     Task<string> ExecuteToolInteractionAsync(
-        string serverPath,
+        Models.ServerConfiguration serverConfig,
         string prompt,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Test connectivity to an MCP server
     /// </summary>
+    Task<bool> TestConnectionAsync(
+        Models.ServerConfiguration serverConfig,
+        CancellationToken cancellationToken = default);
+
+    // Legacy overloads for backward compatibility (deprecated)
+    [Obsolete("Use overload with ServerConfiguration instead")]
+    Task<string> ExecuteToolInteractionAsync(
+        string serverPath,
+        string prompt,
+        CancellationToken cancellationToken = default);
+
+    [Obsolete("Use overload with ServerConfiguration instead")]
     Task<bool> TestConnectionAsync(
         string serverPath,
         CancellationToken cancellationToken = default);
