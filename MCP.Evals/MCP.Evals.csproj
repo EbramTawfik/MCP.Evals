@@ -20,41 +20,41 @@
         <PackageReference Include="ModelContextProtocol.Core" Version="0.4.0-preview.1" />
 
         <!-- Microsoft Extensions - Hosting and DI (Updated versions to match MCP SDK requirements) -->
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
-        <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.10" />
 
         <!-- Configuration -->
-        <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.1" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="8.0.1" />
-        <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.10" />
 
         <!-- Logging -->
-        <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.3" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.1" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.10" />
         <!-- CLI Framework -->
         <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
 
         <!-- Language Models -->
-        <PackageReference Include="OpenAI" Version="2.1.0" />
-        <PackageReference Include="Anthropic.SDK" Version="1.0.0" />
+        <PackageReference Include="OpenAI" Version="2.5.0" />
+        <PackageReference Include="Anthropic.SDK" Version="5.6.0" />
 
         <!-- Configuration Formats -->
-        <PackageReference Include="YamlDotNet" Version="13.7.1" />
-        <PackageReference Include="System.Text.Json" Version="8.0.5" />
+        <PackageReference Include="YamlDotNet" Version="16.3.0" />
+        <PackageReference Include="System.Text.Json" Version="9.0.10" />
 
         <!-- Metrics -->
         <PackageReference Include="prometheus-net" Version="8.2.1" />
         <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
-        <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="8.0.1" />
+        <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.10" />
 
         <!-- Validation -->
-        <PackageReference Include="FluentValidation" Version="11.8.0" />
-        <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.8.0" />
-        <PackageReference Include="Ardalis.GuardClauses" Version="4.6.0" />
+        <PackageReference Include="FluentValidation" Version="12.0.0" />
+        <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.0.0" />
+        <PackageReference Include="Ardalis.GuardClauses" Version="5.0.0" />
     </ItemGroup>
 
 </Project>

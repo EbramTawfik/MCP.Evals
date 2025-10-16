@@ -49,6 +49,13 @@ public static class ServiceCollectionExtensions
 
         // MCP client service (SRP - only responsible for MCP operations)
         services.AddSingleton<IMcpClientService, McpClientService>();
+
+        // MCP transport services (Following SOLID principles)
+        services.AddSingleton<ITransportResolver, TransportResolver>();
+        services.AddSingleton<IServerTypeDetector, ServerTypeDetector>();
+        services.AddSingleton<IServerProcessManager, ServerProcessManager>();
+        services.AddSingleton<ITransportFactory, TransportFactory>();
+        services.AddSingleton<IToolExecutionPlanner, ToolExecutionPlanner>();
     }
 
     private static void AddInfrastructureServices(IServiceCollection services, McpEvalsOptions options)

@@ -1,9 +1,7 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using MCP.Evals.Exceptions;
 using MCP.Evals.Abstractions;
 using MCP.Evals.Models;
-using ModelContextProtocol;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 using System.Diagnostics;
@@ -13,193 +11,48 @@ using System.Text;
 namespace MCP.Evals.Services;
 
 /// <summary>
-/// MCP client service implementation using official ModelContextProtocol SDK
-/// Follows SRP - only responsible for MCP operations
+/// Refactored MCP client service following SOLID principles
+/// Orchestrates other focused services to handle MCP operations
 /// </summary>
 public class McpClientService : IMcpClientService
 {
+    private readonly ITransportResolver _transportResolver;
+    private readonly ITransportFactory _transportFactory;
+    private readonly IToolExecutionPlanner _toolExecutionPlanner;
     private readonly ILogger<McpClientService> _logger;
     private readonly bool _verboseLogging;
-    private List<Process>? _runningServerProcesses;
 
     public McpClientService(
+        ITransportResolver transportResolver,
+        ITransportFactory transportFactory,
+        IToolExecutionPlanner toolExecutionPlanner,
         ILogger<McpClientService> logger)
     {
+        _transportResolver = transportResolver;
+        _transportFactory = transportFactory;
+        _toolExecutionPlanner = toolExecutionPlanner;
         _logger = logger;
-        _verboseLogging = Environment.GetEnvironmentVariable("VERBOSE") == "true";
+        _verboseLogging = Environment.GetEnvironmentVariable("MCP_EVALS_VERBOSE") == "true";
     }
 
     /// <summary>
-    /// Creates a client transport based on server configuration
-    /// Handles both HTTP and stdio transports with proper server detection
+    /// Creates a client transport using the injected transport factory
     /// </summary>
     private async Task<IClientTransport> CreateClientTransportAsync(
         ServerConfiguration serverConfig,
-        CancellationToken cancellationToken = default,
-        bool isTestConnection = false)
+        CancellationToken cancellationToken = default)
     {
-        // Resolve to absolute path to handle relative paths and mixed separators
-        // For HTTP transport, path might be null (direct URL connection)
-        var absoluteServerPath = !string.IsNullOrEmpty(serverConfig.Path)
-            ? Path.GetFullPath(serverConfig.Path)
-            : string.Empty;
+        var transportType = _transportResolver.ResolveTransportType(serverConfig);
 
-        if (_verboseLogging && !string.IsNullOrEmpty(absoluteServerPath))
-            _logger.LogInformation("Resolved server path: {ServerPath} -> {AbsolutePath}",
-                serverConfig.Path, absoluteServerPath);
-
-        // Create transport based on server configuration
-        if (serverConfig.Transport == "http")
+        if (_verboseLogging)
         {
-            return await CreateHttpTransportAsync(serverConfig, absoluteServerPath, cancellationToken, isTestConnection);
-        }
-        else // stdio transport (default)
-        {
-            return CreateStdioTransport(absoluteServerPath, serverConfig, isTestConnection);
-        }
-    }
-
-    /// <summary>
-    /// Creates HTTP transport with optional server startup
-    /// </summary>
-    private async Task<IClientTransport> CreateHttpTransportAsync(
-        ServerConfiguration serverConfig,
-        string absoluteServerPath,
-        CancellationToken cancellationToken,
-        bool isTestConnection)
-    {
-        // Validate URL is provided
-        if (string.IsNullOrEmpty(serverConfig.Url))
-        {
-            var message = "HTTP transport requires a 'url' field to be specified in the server configuration.";
-            if (isTestConnection)
-            {
-                if (_verboseLogging) _logger.LogWarning(message);
-                throw new InvalidOperationException(message);
-            }
-            throw new ArgumentException(message);
+            _logger.LogInformation("Creating {TransportType} transport for server: {ServerPath}",
+                transportType, serverConfig.Path ?? serverConfig.Url);
         }
 
-        if (!Uri.TryCreate(serverConfig.Url, UriKind.Absolute, out var serverUri) ||
-            (serverUri.Scheme != "http" && serverUri.Scheme != "https"))
-        {
-            var message = $"Invalid HTTP URL: {serverConfig.Url}. Must be a valid http:// or https:// URL.";
-            if (isTestConnection)
-            {
-                if (_verboseLogging) _logger.LogWarning("Invalid HTTP URL: {Url}", serverConfig.Url);
-                throw new InvalidOperationException(message);
-            }
-            throw new ArgumentException(message);
-        }
-
-        var transportName = isTestConnection ? "TestHttpServer" : "HttpServer";
-
-        if (string.IsNullOrEmpty(serverConfig.Path))
-        {
-            // Direct URL connection - server should already be running
-            if (_verboseLogging)
-                _logger.LogInformation("Using direct HTTP connection to: {Url}", serverConfig.Url);
-
-            return new HttpClientTransport(new HttpClientTransportOptions
-            {
-                Name = transportName,
-                Endpoint = serverUri
-            });
-        }
-        else
-        {
-            // Server startup + HTTP connection
-            if (_verboseLogging)
-                _logger.LogInformation("Starting HTTP server from: {ServerPath} and connecting to: {Url}",
-                    absoluteServerPath, serverConfig.Url);
-
-            // Start the server process
-            var serverProcess = await StartHttpServerAsync(absoluteServerPath, serverConfig);
-
-            try
-            {
-                // Wait for server to be ready
-                var isReady = await WaitForHttpServerAsync(serverConfig.Url, cancellationToken);
-                if (!isReady)
-                {
-                    serverProcess?.Kill();
-                    throw new McpClientException(absoluteServerPath, "HTTP server failed to start or become ready");
-                }
-
-                // Create HTTP transport
-                var transport = new HttpClientTransport(new HttpClientTransportOptions
-                {
-                    Name = transportName,
-                    Endpoint = serverUri
-                });
-
-                // Store server process for cleanup later (only for non-test connections)
-                if (!isTestConnection)
-                {
-                    _runningServerProcesses ??= new List<Process>();
-                    _runningServerProcesses.Add(serverProcess);
-                }
-
-                if (_verboseLogging)
-                    _logger.LogInformation("HTTP server started and connected successfully");
-
-                return transport;
-            }
-            catch
-            {
-                // Cleanup on failure
-                serverProcess?.Kill();
-                throw;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Creates stdio transport based on server type detection
-    /// </summary>
-    private IClientTransport CreateStdioTransport(
-        string absoluteServerPath,
-        ServerConfiguration serverConfig,
-        bool isTestConnection)
-    {
-        // Determine server type based on path/extension
-        var isNodeServer = absoluteServerPath.Contains("typescript-sample") ||
-                          absoluteServerPath.EndsWith(".ts") ||
-                          absoluteServerPath.EndsWith(".js");
-
-        var isCSharpExecutable = absoluteServerPath.EndsWith(".exe") ||
-                               absoluteServerPath.Contains("CSharpMcpSample");
-
-        var namePrefix = isTestConnection ? "Test" : "";
-
-        if (isNodeServer)
-        {
-            return new StdioClientTransport(new StdioClientTransportOptions
-            {
-                Name = $"{namePrefix}TypeScriptServer",
-                Command = "npx",
-                Arguments = ["tsx", absoluteServerPath]
-            });
-        }
-        else if (isCSharpExecutable)
-        {
-            return new StdioClientTransport(new StdioClientTransportOptions
-            {
-                Name = $"{namePrefix}CSharpServer",
-                Command = absoluteServerPath,
-                Arguments = serverConfig.Args ?? []
-            });
-        }
-        else
-        {
-            return new StdioClientTransport(new StdioClientTransportOptions
-            {
-                Name = $"{namePrefix}DefaultServer",
-                Command = absoluteServerPath,
-                Arguments = serverConfig.Args ?? []
-            });
-        }
-    }
+        return await _transportFactory.CreateTransportAsync(transportType, serverConfig, cancellationToken);
+    } 
+    
 
     public async Task<string> ExecuteToolInteractionAsync(
         ServerConfiguration serverConfig,
@@ -212,130 +65,21 @@ public class McpClientService : IMcpClientService
 
         try
         {
+            // Use transport factory to create and connect
             var clientTransport = await CreateClientTransportAsync(serverConfig, cancellationToken);
             await using var client = await McpClient.CreateAsync(clientTransport);
 
-            // Get available tools
-            var tools = await client.ListToolsAsync();
-            if (_verboseLogging)
-            {
-                _logger.LogInformation("Available tools:");
-                foreach (var tool in tools)
-                {
-                    _logger.LogInformation("  - {ToolName}: {Description}", tool.Name, tool.Description);
-                }
-            }
-
-            // Use AI to determine which tools to call based on the prompt
-            var responses = new List<string>();
-
-            // Analyze the prompt to determine which tools to call
-            var toolExecutions = await DetermineToolExecutionsAsync(prompt, tools);
-
-            if (_verboseLogging)
-                _logger.LogInformation("AI determined {Count} tool executions", toolExecutions.Count);
-
-            // Execute the determined tool calls
-            foreach (var execution in toolExecutions)
-            {
-                try
-                {
-                    if (_verboseLogging)
-                        _logger.LogInformation("Calling tool {ToolName} with arguments: {Args}",
-                            execution.ToolName, JsonSerializer.Serialize(execution.Arguments));
-
-                    var result = await client.CallToolAsync(
-                        execution.ToolName,
-                        execution.Arguments,
-                        cancellationToken: cancellationToken);
-
-                    var response = ExtractTextFromResult(result);
-
-                    // Only add meaningful tool responses, not metadata
-                    if (!string.IsNullOrEmpty(response) && response != "No text content" && response != "Unable to extract response content")
-                    {
-                        responses.Add(response);
-                    }
-
-                    if (_verboseLogging)
-                        _logger.LogInformation("Tool {ToolName} executed successfully", execution.ToolName);
-                }
-                catch (Exception ex)
-                {
-                    var errorMsg = $"Error calling tool {execution.ToolName}: {ex.Message}";
-                    responses.Add(errorMsg);
-                    _logger.LogWarning(ex, "Failed to call tool {ToolName}", execution.ToolName);
-                }
-            }
-
-            // If no tools were called, provide a brief response
-            if (toolExecutions.Count == 0)
-            {
-                responses.Add("No appropriate tools were found for this request.");
-            }
-
-            // Return only the actual tool results, not metadata
-            var finalResponse = responses.Count > 0 ? string.Join("\n", responses) : "No tool responses generated.";
-
-            if (_verboseLogging)
-                _logger.LogInformation("Tool interaction completed successfully with response: {Response}", finalResponse);
-
-            return finalResponse;
+            // Delegate tool interaction planning and execution to focused service
+            return await _toolExecutionPlanner.ExecuteToolInteractionAsync(
+                client,
+                serverConfig,
+                prompt,
+                cancellationToken);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error executing tool interaction with server: {ServerPath}", serverConfig.Path ?? serverConfig.Url);
             throw new McpClientException(serverConfig.Path ?? serverConfig.Url ?? "Unknown", $"Failed to execute tool interaction: {ex.Message}");
-        }
-    }
-
-    private async Task<List<ToolExecution>> DetermineToolExecutionsAsync(string prompt, IList<ModelContextProtocol.Client.McpClientTool> availableTools)
-    {
-        try
-        {
-            // Create a system prompt that describes available tools and asks AI to determine what to call
-            var toolDescriptions = availableTools.Select(t =>
-                $"- {t.Name}: {t.Description ?? "No description available"}"
-            );
-
-            var systemPrompt = $@"You are an AI assistant that determines which tools to call based on user prompts.
-
-Available tools:
-{string.Join("\n", toolDescriptions)}
-
-Based on the user's prompt, determine which tools should be called and with what parameters.
-Return a JSON object with a single tool execution in this format:
-{{
-  ""toolName"": ""tool_name"",
-  ""arguments"": {{ ""param1"": ""value1"", ""param2"": ""value2"" }}
-}}
-
-If no tools should be called, return: {{}}
-
-Rules:
-1. Only call tools that are directly relevant to the prompt
-2. Use appropriate parameter values based on the prompt content
-3. For mathematical operations (add, multiply), extract numbers from the prompt and use parameters 'a' and 'b'
-4. For echo tools, use parameter 'message' with the text to echo
-5. Be precise with parameter names and types - use 'a' and 'b' for math tools, 'message' for echo tools";
-
-            var userPrompt = $"User prompt: {prompt}";
-
-            // Use a simple HTTP client to call Azure OpenAI (or any OpenAI-compatible endpoint)
-            var toolDecisions = await CallLlmForToolDecisionAsync(systemPrompt, userPrompt);
-
-            if (_verboseLogging)
-                _logger.LogInformation("LLM tool decision response: {Response}", toolDecisions);
-
-            // Parse the response to get tool executions
-            return ParseToolExecutions(toolDecisions);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to determine tool executions using AI, falling back to simple logic");
-
-            // Fallback to simple prompt-based logic
-            return await DetermineToolExecutionsFallback(prompt, availableTools);
         }
     }
 
@@ -698,30 +442,18 @@ Rules:
 
         try
         {
-            var clientTransport = await CreateClientTransportAsync(serverConfig, cancellationToken, isTestConnection: true);
+            // Use transport factory for test connection
+            var transportType = _transportResolver.ResolveTransportType(serverConfig);
+            var clientTransport = await _transportFactory.CreateTransportAsync(transportType, serverConfig, cancellationToken);
 
-            // Special cleanup for HTTP test connections
-            try
-            {
-                await using var client = await McpClient.CreateAsync(clientTransport);
-                var tools = await client.ListToolsAsync();
+            await using var client = await McpClient.CreateAsync(clientTransport);
+            var tools = await client.ListToolsAsync();
 
-                if (_verboseLogging)
-                    _logger.LogDebug("Connection test successful for server: {ServerPath}, found {ToolCount} tools",
-                        serverConfig.Path, tools.Count);
+            if (_verboseLogging)
+                _logger.LogDebug("Connection test successful for server: {ServerPath}, found {ToolCount} tools",
+                    serverConfig.Path, tools.Count);
 
-                return tools.Any(); // Consider connection successful if we can list tools
-            }
-            finally
-            {
-                // Clean up test HTTP server process if it was started
-                if (serverConfig.Transport == "http" && !string.IsNullOrEmpty(serverConfig.Path))
-                {
-                    // For test connections, we need to manually clean up the process
-                    // since we don't store it in _runningServerProcesses
-                    await CleanupTestHttpServerAsync();
-                }
-            }
+            return tools.Any(); // Consider connection successful if we can list tools
         }
         catch (Exception ex)
         {
