@@ -1,9 +1,9 @@
 # C# MCP Server Evaluation Configuration
 # This evaluates the C# sample server with equivalent math and echo operations
 
-# Model configuration - using OpenAI GPT-4o for consistency
+# Model configuration - using Azure OpenAI GPT-4o
 model:
-  provider: openai
+  provider: azure-openai
   name: gpt-4o
 
 server:

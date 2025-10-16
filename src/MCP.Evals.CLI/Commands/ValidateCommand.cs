@@ -148,15 +148,7 @@ public class ValidateCommand : Command
                 missingServers.Add($"Global server: {GetServerPathError(configuration.Server)}");
             }
 
-            // Check evaluation-specific server overrides
-            foreach (var evaluation in configuration.Evaluations)
-            {
-                if (evaluation.Server != null && !IsValidServerPath(evaluation.Server))
-                {
-                    missingServers.Add($"Evaluation '{evaluation.Name}': {GetServerPathError(evaluation.Server)}");
-                }
-            }
-
+            // Server validation is complete since all evaluations use the global server
             if (missingServers.Any())
             {
                 Console.Error.WriteLine("❌ Server file validation failed:");
@@ -185,8 +177,8 @@ public class ValidateCommand : Command
 
                     try
                     {
-                        // Use evaluation-specific server config if available, otherwise use global config
-                        var serverConfig = evaluation.Server ?? configuration.Server;
+                        // Use global server config for all evaluations
+                        var serverConfig = configuration.Server;
                         var isConnected = await mcpClientService.TestConnectionAsync(serverConfig);
                         connectivityResults.Add((evaluation.Name, serverConfig.Path ?? serverConfig.Url ?? "Unknown", isConnected, null));
 
@@ -201,7 +193,7 @@ public class ValidateCommand : Command
                     }
                     catch (Exception ex)
                     {
-                        var serverConfig = evaluation.Server ?? configuration.Server;
+                        var serverConfig = configuration.Server;
                         connectivityResults.Add((evaluation.Name, serverConfig.Path ?? serverConfig.Url ?? "Unknown", false, ex.Message));
                         Console.WriteLine($"   ❌ {evaluation.Name}: {ex.Message}");
                     }

@@ -82,9 +82,7 @@ public class EvaluationValidatorsTests
             Provider = "openai",
             Name = "gpt-4o",
             MaxTokens = 4000,
-            Temperature = 0.1,
-            MaxRetries = 3,
-            Timeout = TimeSpan.FromSeconds(30)
+            Temperature = 0.1
         };
 
         // Act

@@ -184,9 +184,8 @@ public static class ServiceCollectionExtensions
             throw new InvalidOperationException("Anthropic API key not configured. Set ANTHROPIC_API_KEY environment variable or configure in options.");
         }
 
-        var anthropicClient = new AnthropicClient(apiKey);
         var logger = provider.GetRequiredService<ILogger<AnthropicLanguageModel>>();
-        return new AnthropicLanguageModel(anthropicClient, config, logger, mcpClientService);
+        return new AnthropicLanguageModel(config, logger, mcpClientService);
     }
 }
 

@@ -51,8 +51,8 @@ public class EvaluationOrchestrator : IEvaluationOrchestrator
 
         try
         {
-            // Use evaluation-specific server config if available, otherwise use global config
-            var serverConfig = request.Server ?? globalServerConfig;
+            // Use the global server config for all evaluations
+            var serverConfig = globalServerConfig;
 
             // Test MCP server connectivity first
             var isConnected = await _mcpClientService.TestConnectionAsync(serverConfig, cancellationToken);

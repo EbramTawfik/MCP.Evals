@@ -38,12 +38,10 @@ public class OpenAILanguageModel : ILanguageModel
         CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Generating response with OpenAI model: {ModelName}", _config.Name);
-        Console.WriteLine($"[DEBUG] About to call OpenAI with model: {_config.Name}");
 
         try
         {
             var chatClient = _openAIClient.GetChatClient(_config.Name ?? "gpt-3.5-turbo");
-            Console.WriteLine($"[DEBUG] Got chat client for model: {_config.Name ?? "gpt-3.5-turbo"}");
 
             var messages = new List<ChatMessage>
             {
@@ -57,9 +55,7 @@ public class OpenAILanguageModel : ILanguageModel
                 Temperature = (float)_config.Temperature
             };
 
-            Console.WriteLine($"[DEBUG] About to call CompleteChatAsync...");
             var response = await chatClient.CompleteChatAsync(messages, options, cancellationToken);
-            Console.WriteLine($"[DEBUG] CompleteChatAsync succeeded");
 
             var content = response.Value.Content[0].Text;
             _logger.LogDebug("Generated response of length: {Length}", content.Length);
@@ -67,11 +63,6 @@ public class OpenAILanguageModel : ILanguageModel
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[DEBUG] Exception in GenerateResponseAsync: {ex.GetType().Name}: {ex.Message}");
-            if (ex.InnerException != null)
-            {
-                Console.WriteLine($"[DEBUG] Inner exception: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
-            }
             _logger.LogError(ex, "Failed to generate response with OpenAI");
             throw new LanguageModelException("openai", _config.Name, "Response generation failed", ex);
         }
@@ -80,23 +71,16 @@ public class OpenAILanguageModel : ILanguageModel
     public async Task<string> GenerateWithToolsAsync(
         string systemPrompt,
         string userPrompt,
-        string serverPath,
+        ServerConfiguration serverConfig,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("Generating response with tools for server: {ServerPath}", serverPath);
+        _logger.LogDebug("Generating response with tools for server: {ServerPath}", serverConfig.Path);
 
         try
         {
             // For now, we'll use the MCP client service to handle tool interactions
             // In a more sophisticated implementation, we would integrate MCP tools
             // directly with OpenAI's function calling capabilities
-
-            // Create a ServerConfiguration from the legacy serverPath
-            var serverConfig = new ServerConfiguration
-            {
-                Transport = "stdio", // Default to stdio for backward compatibility
-                Path = serverPath
-            };
 
             var toolResponse = await _mcpClientService.ExecuteToolInteractionAsync(
                 serverConfig, userPrompt, cancellationToken);
@@ -127,18 +111,15 @@ public class OpenAILanguageModel : ILanguageModel
 /// </summary>
 public class AnthropicLanguageModel : ILanguageModel
 {
-    private readonly AnthropicClient _anthropicClient;
     private readonly ILogger<AnthropicLanguageModel> _logger;
     private readonly LanguageModelConfiguration _config;
     private readonly IMcpClientService _mcpClientService;
 
     public AnthropicLanguageModel(
-        AnthropicClient anthropicClient,
         IOptions<LanguageModelConfiguration> config,
         ILogger<AnthropicLanguageModel> logger,
         IMcpClientService mcpClientService)
     {
-        _anthropicClient = anthropicClient;
         _config = config.Value;
         _logger = logger;
         _mcpClientService = mcpClientService;
@@ -153,11 +134,10 @@ public class AnthropicLanguageModel : ILanguageModel
 
         try
         {
-            // TODO: Implement proper Anthropic SDK usage
-            // For now, return a placeholder until we can verify the correct API
+            // Placeholder implementation - Anthropic SDK integration pending
             await Task.Delay(100, cancellationToken); // Simulate API call
 
-            var content = "Anthropic implementation pending - correct SDK API needed";
+            var content = "Anthropic implementation not yet implemented - placeholder response";
             _logger.LogDebug("Generated response of length: {Length}", content.Length);
             return content;
         }
@@ -171,20 +151,13 @@ public class AnthropicLanguageModel : ILanguageModel
     public async Task<string> GenerateWithToolsAsync(
         string systemPrompt,
         string userPrompt,
-        string serverPath,
+        ServerConfiguration serverConfig,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("Generating response with tools using Anthropic for server: {ServerPath}", serverPath);
+        _logger.LogDebug("Generating response with tools using Anthropic for server: {ServerPath}", serverConfig.Path);
 
         try
         {
-            // Create a ServerConfiguration from the legacy serverPath
-            var serverConfig = new ServerConfiguration
-            {
-                Transport = "stdio", // Default to stdio for backward compatibility
-                Path = serverPath
-            };
-
             var toolResponse = await _mcpClientService.ExecuteToolInteractionAsync(
                 serverConfig, userPrompt, cancellationToken);
 

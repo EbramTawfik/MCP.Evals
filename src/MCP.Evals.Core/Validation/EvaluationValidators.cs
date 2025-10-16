@@ -27,17 +27,6 @@ public class EvaluationRequestValidator : AbstractValidator<EvaluationRequest>
             .WithMessage("Evaluation prompt is required")
             .MaximumLength(10000)
             .WithMessage("Evaluation prompt must not exceed 10000 characters");
-
-        // Server configuration is now optional at the evaluation level (can use global config)
-        RuleFor(x => x.Server)
-            .SetValidator(new ServerConfigurationValidator()!)
-            .When(x => x.Server != null);
-
-        // HTTP transport is not allowed at evaluation level - must be global
-        RuleFor(x => x.Server)
-            .Must(server => server == null || server.Transport?.ToLower() != "http")
-            .WithMessage("HTTP transport configuration must be defined globally, not per-evaluation. Move HTTP server configuration to the global 'server' section.")
-            .When(x => x.Server != null);
     }
 
 
@@ -102,17 +91,7 @@ public class LanguageModelConfigurationValidator : AbstractValidator<LanguageMod
             .LessThanOrEqualTo(2.0)
             .WithMessage("Temperature must be <= 2.0");
 
-        RuleFor(x => x.MaxRetries)
-            .GreaterThanOrEqualTo(0)
-            .WithMessage("MaxRetries must be >= 0")
-            .LessThanOrEqualTo(10)
-            .WithMessage("MaxRetries must be <= 10");
 
-        RuleFor(x => x.Timeout)
-            .GreaterThan(TimeSpan.Zero)
-            .WithMessage("Timeout must be greater than zero")
-            .LessThanOrEqualTo(TimeSpan.FromMinutes(10))
-            .WithMessage("Timeout must not exceed 10 minutes");
     }
 }
 

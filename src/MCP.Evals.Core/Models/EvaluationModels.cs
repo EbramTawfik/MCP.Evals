@@ -93,8 +93,6 @@ public sealed class EvaluationRequest
     public required string Description { get; init; }
     public required string Prompt { get; init; }
     public string? ExpectedResult { get; init; }
-    public ServerConfiguration? Server { get; init; } // Optional evaluation-specific server override
-    public Dictionary<string, object> Metadata { get; init; } = new();
 }
 
 /// <summary>
@@ -117,11 +115,8 @@ public sealed class LanguageModelConfiguration
     public required string Provider { get; init; } // "openai", "anthropic", "azure-openai"
     public required string Name { get; init; } // Changed from ModelName to Name to match YAML
     public string? ApiKey { get; init; }
-    public string? BaseUrl { get; init; }
     public int MaxTokens { get; init; } = 4000;
     public double Temperature { get; init; } = 0.1;
-    public int MaxRetries { get; init; } = 3;
-    public TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(30);
 }
 
 /// <summary>
@@ -133,7 +128,5 @@ public sealed class ServerConfiguration
     public string? Path { get; init; } // Path to executable or script file (required for stdio, optional for http)
     public string? Url { get; init; } // HTTP URL (required for HTTP transport)
     public string[]? Args { get; init; } // Optional command line arguments
-    public Dictionary<string, string>? Environment { get; init; } // Optional environment variables
-    public string? WorkingDirectory { get; init; } // Optional working directory
     public TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(30);
 }

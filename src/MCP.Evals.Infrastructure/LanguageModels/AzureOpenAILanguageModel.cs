@@ -47,23 +47,10 @@ public class AzureOpenAILanguageModel : ILanguageModel
     {
         _logger.LogDebug("Generating response with Azure OpenAI model: {ModelName}", _config.Name);
 
-        // Check if verbose mode is enabled
-        var isVerbose = bool.TryParse(Environment.GetEnvironmentVariable("MCP_EVALS_VERBOSE"), out var verboseResult) && verboseResult;
-
-        if (isVerbose)
-        {
-            Console.WriteLine($"[DEBUG] About to call Azure OpenAI with model: {_config.Name}");
-        }
-
         try
         {
             var deploymentName = _config.Name ?? "gpt-4o";
             var url = $"{_endpoint}/openai/deployments/{deploymentName}/chat/completions?api-version={_apiVersion}";
-
-            if (isVerbose)
-            {
-                Console.WriteLine($"[DEBUG] Azure OpenAI URL: {url}");
-            }
 
             var requestBody = new
             {
@@ -89,27 +76,15 @@ public class AzureOpenAILanguageModel : ILanguageModel
 
             _httpClient.DefaultRequestHeaders.Add("api-key", _apiKey);
 
-            if (isVerbose)
-            {
-                Console.WriteLine($"[DEBUG] About to call Azure OpenAI HTTP endpoint...");
-            }
             var response = await _httpClient.PostAsync(url, content, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                if (isVerbose)
-                {
-                    Console.WriteLine($"[DEBUG] Azure OpenAI error response: {response.StatusCode} - {errorContent}");
-                }
                 throw new HttpRequestException($"Azure OpenAI API returned {response.StatusCode}: {errorContent}");
             }
 
             var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
-            if (isVerbose)
-            {
-                Console.WriteLine($"[DEBUG] Azure OpenAI response received, length: {responseContent.Length}");
-            }
 
             var responseJson = JsonSerializer.Deserialize<JsonElement>(responseContent);
             var messageContent = responseJson.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
@@ -119,14 +94,6 @@ public class AzureOpenAILanguageModel : ILanguageModel
         }
         catch (Exception ex)
         {
-            if (isVerbose)
-            {
-                Console.WriteLine($"[DEBUG] Exception in Azure OpenAI GenerateResponseAsync: {ex.GetType().Name}: {ex.Message}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"[DEBUG] Inner exception: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
-                }
-            }
             _logger.LogError(ex, "Failed to generate response with Azure OpenAI");
             throw new LanguageModelException("azure-openai", _config.Name, "Response generation failed", ex);
         }
@@ -135,20 +102,13 @@ public class AzureOpenAILanguageModel : ILanguageModel
     public async Task<string> GenerateWithToolsAsync(
         string systemPrompt,
         string userPrompt,
-        string serverPath,
+        ServerConfiguration serverConfig,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("Generating response with tools using Azure OpenAI for server: {ServerPath}", serverPath);
+        _logger.LogDebug("Generating response with tools using Azure OpenAI for server: {ServerPath}", serverConfig.Path);
 
         try
         {
-            // Create a ServerConfiguration from the legacy serverPath
-            var serverConfig = new ServerConfiguration
-            {
-                Transport = "stdio", // Default to stdio for backward compatibility
-                Path = serverPath
-            };
-
             var toolResponse = await _mcpClientService.ExecuteToolInteractionAsync(
                 serverConfig, userPrompt, cancellationToken);
 
