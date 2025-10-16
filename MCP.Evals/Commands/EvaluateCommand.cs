@@ -92,7 +92,7 @@ public class EvaluateCommand : Command
             using var host = hostBuilder.Build();
 
             var logger = host.Services.GetRequiredService<ILogger<EvaluateCommand>>();
-            var orchestrator = host.Services.GetRequiredService<IEvaluationOrchestrator>();
+            var orchestrator = host.Services.GetRequiredService<IEvaluationOrchestrationService>();
 
             if (verbose)
             {

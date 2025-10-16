@@ -8,15 +8,14 @@ using System.Text;
 namespace MCP.Evals.Services;
 
 /// <summary>
-/// Service for managing server processes based on server type
-/// Follows SRP - only responsible for server process management
+/// Manages server processes based on server type
 /// </summary>
-public class ServerProcessManager : IServerProcessManager
+public class ServerProcessManagementService : IServerProcessManagementService
 {
-    private readonly ILogger<ServerProcessManager> _logger;
+    private readonly ILogger<ServerProcessManagementService> _logger;
     private readonly bool _verboseLogging;
 
-    public ServerProcessManager(ILogger<ServerProcessManager> logger)
+    public ServerProcessManagementService(ILogger<ServerProcessManagementService> logger)
     {
         _logger = logger;
         _verboseLogging = Environment.GetEnvironmentVariable("MCP_EVALS_VERBOSE") == "true";

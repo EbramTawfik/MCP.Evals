@@ -9,15 +9,14 @@ using System.Text;
 namespace MCP.Evals.Services;
 
 /// <summary>
-/// Service for planning tool executions based on prompts and available tools
-/// Follows SRP - only responsible for tool execution planning using AI
+/// Plans tool executions based on prompts and available tools using AI
 /// </summary>
-public class ToolExecutionPlanner : IToolExecutionPlanner
+public class ToolExecutionPlanningService : IToolExecutionPlanningService
 {
-    private readonly ILogger<ToolExecutionPlanner> _logger;
+    private readonly ILogger<ToolExecutionPlanningService> _logger;
     private readonly bool _verboseLogging;
 
-    public ToolExecutionPlanner(ILogger<ToolExecutionPlanner> logger)
+    public ToolExecutionPlanningService(ILogger<ToolExecutionPlanningService> logger)
     {
         _logger = logger;
         _verboseLogging = Environment.GetEnvironmentVariable("MCP_EVALS_VERBOSE") == "true";

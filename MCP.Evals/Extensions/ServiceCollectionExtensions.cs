@@ -6,11 +6,12 @@ using MCP.Evals.Abstractions;
 using MCP.Evals.Models;
 using MCP.Evals.Configuration;
 using MCP.Evals.Services;
+using MCP.Evals.Validation;
 using MCP.Evals.Metrics;
 using OpenAI;
 using Anthropic.SDK;
 
-namespace MCP.Evals.Services;
+namespace MCP.Evals.Extensions;
 
 /// <summary>
 /// Dependency injection extensions following DIP
@@ -41,21 +42,21 @@ public static class ServiceCollectionExtensions
 
     private static void AddCoreServices(IServiceCollection services)
     {
-        // Main orchestrator (DIP - depends on abstractions)
-        services.AddSingleton<IEvaluationOrchestrator, EvaluationOrchestrator>();
+        // Main orchestrator (coordinates evaluation workflows)
+        services.AddSingleton<IEvaluationOrchestrationService, EvaluationOrchestrationService>();
 
-        // Evaluation scoring (SRP - only responsible for scoring)
-        services.AddSingleton<IEvaluationScorer, LlmEvaluationScorer>();
+        // Evaluation scoring (scores responses using language models)
+        services.AddSingleton<IEvaluationScoringService, EvaluationScoringService>();
 
-        // MCP client service (SRP - only responsible for MCP operations)
+        // MCP client operations (handles MCP protocol communication)
         services.AddSingleton<IMcpClientService, McpClientService>();
 
-        // MCP transport services (Following SOLID principles)
-        services.AddSingleton<ITransportResolver, TransportResolver>();
-        services.AddSingleton<IServerTypeDetector, ServerTypeDetector>();
-        services.AddSingleton<IServerProcessManager, ServerProcessManager>();
-        services.AddSingleton<ITransportFactory, TransportFactory>();
-        services.AddSingleton<IToolExecutionPlanner, ToolExecutionPlanner>();
+        // Transport services (handle different connection types)
+        services.AddSingleton<ITransportResolutionService, TransportResolutionService>();
+        services.AddSingleton<IServerTypeDetectionService, ServerTypeDetectionService>();
+        services.AddSingleton<IServerProcessManagementService, ServerProcessManagementService>();
+        services.AddSingleton<ITransportCreationService, TransportCreationService>();
+        services.AddSingleton<IToolExecutionPlanningService, ToolExecutionPlanningService>();
     }
 
     private static void AddInfrastructureServices(IServiceCollection services, McpEvalsOptions options)
@@ -78,7 +79,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ILanguageModel>(provider =>
         {
             var config = provider.GetRequiredService<IOptions<LanguageModelConfiguration>>();
-            var logger = provider.GetRequiredService<ILogger<OpenAILanguageModel>>();
+            var logger = provider.GetRequiredService<ILogger<OpenAILanguageService>>();
             var mcpClientService = provider.GetRequiredService<IMcpClientService>();
 
             // Check for Azure OpenAI first
@@ -94,8 +95,8 @@ public static class ServiceCollectionExtensions
                     Console.WriteLine("[DEBUG] Detected Azure OpenAI configuration - using custom Azure OpenAI client");
                 }
                 var httpClient = provider.GetRequiredService<HttpClient>();
-                var azureLogger = provider.GetRequiredService<ILogger<AzureOpenAILanguageModel>>();
-                return new AzureOpenAILanguageModel(httpClient, config, azureLogger, mcpClientService, azureEndpoint, azureApiKey);
+                var azureLogger = provider.GetRequiredService<ILogger<AzureOpenAILanguageService>>();
+                return new AzureOpenAILanguageService(httpClient, config, azureLogger, mcpClientService, azureEndpoint, azureApiKey);
             }
 
             return config.Value.Provider.ToLower() switch
@@ -132,10 +133,10 @@ public static class ServiceCollectionExtensions
         }
     }
 
-    private static OpenAILanguageModel CreateOpenAILanguageModel(
+    private static OpenAILanguageService CreateOpenAILanguageModel(
         IServiceProvider provider,
         IOptions<LanguageModelConfiguration> config,
-        ILogger<OpenAILanguageModel> logger,
+        ILogger<OpenAILanguageService> logger,
         IMcpClientService mcpClientService)
     {
         Console.WriteLine($"[DEBUG] Creating OpenAI Language Model...");
@@ -174,10 +175,10 @@ public static class ServiceCollectionExtensions
             Console.WriteLine($"[DEBUG] Using OpenAI API");
             openAIClient = new OpenAIClient(apiKey);
         }
-        return new OpenAILanguageModel(openAIClient, config, logger, mcpClientService);
+        return new OpenAILanguageService(openAIClient, config, logger, mcpClientService);
     }
 
-    private static AnthropicLanguageModel CreateAnthropicLanguageModel(
+    private static AnthropicLanguageService CreateAnthropicLanguageModel(
         IServiceProvider provider,
         IOptions<LanguageModelConfiguration> config,
         IMcpClientService mcpClientService)
@@ -188,8 +189,8 @@ public static class ServiceCollectionExtensions
             throw new InvalidOperationException("Anthropic API key not configured. Set ANTHROPIC_API_KEY environment variable or configure in options.");
         }
 
-        var logger = provider.GetRequiredService<ILogger<AnthropicLanguageModel>>();
-        return new AnthropicLanguageModel(config, logger, mcpClientService);
+        var logger = provider.GetRequiredService<ILogger<AnthropicLanguageService>>();
+        return new AnthropicLanguageService(config, logger, mcpClientService);
     }
 }
 

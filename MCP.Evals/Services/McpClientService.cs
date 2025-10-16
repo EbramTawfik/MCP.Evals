@@ -16,16 +16,16 @@ namespace MCP.Evals.Services;
 /// </summary>
 public class McpClientService : IMcpClientService
 {
-    private readonly ITransportResolver _transportResolver;
-    private readonly ITransportFactory _transportFactory;
-    private readonly IToolExecutionPlanner _toolExecutionPlanner;
+    private readonly ITransportResolutionService _transportResolver;
+    private readonly ITransportCreationService _transportFactory;
+    private readonly IToolExecutionPlanningService _toolExecutionPlanner;
     private readonly ILogger<McpClientService> _logger;
     private readonly bool _verboseLogging;
 
     public McpClientService(
-        ITransportResolver transportResolver,
-        ITransportFactory transportFactory,
-        IToolExecutionPlanner toolExecutionPlanner,
+        ITransportResolutionService transportResolver,
+        ITransportCreationService transportFactory,
+        IToolExecutionPlanningService toolExecutionPlanner,
         ILogger<McpClientService> logger)
     {
         _transportResolver = transportResolver;

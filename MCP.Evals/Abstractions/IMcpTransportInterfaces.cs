@@ -5,9 +5,9 @@ using ModelContextProtocol.Client;
 namespace MCP.Evals.Abstractions;
 
 /// <summary>
-/// Interface for determining transport type based on server configuration
+/// Interface for transport resolution service
 /// </summary>
-public interface ITransportResolver
+public interface ITransportResolutionService
 {
     /// <summary>
     /// Determines the appropriate transport type for a server configuration
@@ -16,9 +16,9 @@ public interface ITransportResolver
 }
 
 /// <summary>
-/// Interface for creating MCP client transports
+/// Interface for transport creation service
 /// </summary>
-public interface ITransportFactory
+public interface ITransportCreationService
 {
     /// <summary>
     /// Creates a client transport for the specified type and configuration
@@ -30,9 +30,9 @@ public interface ITransportFactory
 }
 
 /// <summary>
-/// Interface for detecting server file types
+/// Interface for server type detection service
 /// </summary>
-public interface IServerTypeDetector
+public interface IServerTypeDetectionService
 {
     /// <summary>
     /// Detects the server type based on file path and configuration
@@ -41,9 +41,9 @@ public interface IServerTypeDetector
 }
 
 /// <summary>
-/// Interface for starting server processes based on server type
+/// Interface for server process management service
 /// </summary>
-public interface IServerProcessManager
+public interface IServerProcessManagementService
 {
     /// <summary>
     /// Starts a server process based on the detected server type
@@ -63,9 +63,9 @@ public interface IServerProcessManager
 }
 
 /// <summary>
-/// Interface for managing tool execution decisions
+/// Interface for tool execution planning service
 /// </summary>
-public interface IToolExecutionPlanner
+public interface IToolExecutionPlanningService
 {
     /// <summary>
     /// Determines which tools to execute based on a prompt and available tools

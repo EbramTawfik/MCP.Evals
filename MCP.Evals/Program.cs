@@ -3,7 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using MCP.Evals.Commands;
 using MCP.Evals.Models;
-using MCP.Evals.Services;
+using MCP.Evals.Extensions;
 using Prometheus;
 using System.CommandLine;
 

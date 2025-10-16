@@ -7,13 +7,12 @@ using System.Text.Json;
 namespace MCP.Evals.Services;
 
 /// <summary>
-/// LLM-based evaluation scorer following SRP
-/// Only responsible for scoring evaluation responses
+/// Scores evaluation responses using language models
 /// </summary>
-public class LlmEvaluationScorer : IEvaluationScorer
+public class EvaluationScoringService : IEvaluationScoringService
 {
     private readonly ILanguageModel _languageModel;
-    private readonly ILogger<LlmEvaluationScorer> _logger;
+    private readonly ILogger<EvaluationScoringService> _logger;
 
     private const string EvaluationSystemPrompt = """
         You are an expert evaluator assessing how well an LLM answers a given question. 
@@ -38,9 +37,9 @@ public class LlmEvaluationScorer : IEvaluationScorer
         Important: Return ONLY the JSON object, no additional text or formatting.
         """;
 
-    public LlmEvaluationScorer(
+    public EvaluationScoringService(
         ILanguageModel languageModel,
-        ILogger<LlmEvaluationScorer> logger)
+        ILogger<EvaluationScoringService> logger)
     {
         _languageModel = languageModel;
         _logger = logger;

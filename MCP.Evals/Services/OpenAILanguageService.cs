@@ -5,25 +5,23 @@ using MCP.Evals.Abstractions;
 using MCP.Evals.Models;
 using OpenAI;
 using OpenAI.Chat;
-using Anthropic.SDK;
 
 namespace MCP.Evals.Services;
 
 /// <summary>
-/// OpenAI language model implementation following LSP
-/// Can be substituted with any other ILanguageModel implementation
+/// Provides OpenAI language model functionality
 /// </summary>
-public class OpenAILanguageModel : ILanguageModel
+public class OpenAILanguageService : ILanguageModel
 {
     private readonly OpenAIClient _openAIClient;
     private readonly LanguageModelConfiguration _config;
-    private readonly ILogger<OpenAILanguageModel> _logger;
+    private readonly ILogger<OpenAILanguageService> _logger;
     private readonly IMcpClientService _mcpClientService;
 
-    public OpenAILanguageModel(
+    public OpenAILanguageService(
         OpenAIClient openAIClient,
         IOptions<LanguageModelConfiguration> config,
-        ILogger<OpenAILanguageModel> logger,
+        ILogger<OpenAILanguageService> logger,
         IMcpClientService mcpClientService)
     {
         _openAIClient = openAIClient;
@@ -101,81 +99,6 @@ public class OpenAILanguageModel : ILanguageModel
         {
             _logger.LogError(ex, "Failed to generate response with tools");
             throw new LanguageModelException("openai", _config.Name, "Tool-based response generation failed", ex);
-        }
-    }
-}
-
-/// <summary>
-/// Anthropic language model implementation following LSP
-/// Demonstrates Open/Closed Principle - can be added without modifying existing code
-/// </summary>
-public class AnthropicLanguageModel : ILanguageModel
-{
-    private readonly ILogger<AnthropicLanguageModel> _logger;
-    private readonly LanguageModelConfiguration _config;
-    private readonly IMcpClientService _mcpClientService;
-
-    public AnthropicLanguageModel(
-        IOptions<LanguageModelConfiguration> config,
-        ILogger<AnthropicLanguageModel> logger,
-        IMcpClientService mcpClientService)
-    {
-        _config = config.Value;
-        _logger = logger;
-        _mcpClientService = mcpClientService;
-    }
-
-    public async Task<string> GenerateResponseAsync(
-        string systemPrompt,
-        string userPrompt,
-        CancellationToken cancellationToken = default)
-    {
-        _logger.LogDebug("Generating response with Anthropic model: {ModelName}", _config.Name);
-
-        try
-        {
-            // Placeholder implementation - Anthropic SDK integration pending
-            await Task.Delay(100, cancellationToken); // Simulate API call
-
-            var content = "Anthropic implementation not yet implemented - placeholder response";
-            _logger.LogDebug("Generated response of length: {Length}", content.Length);
-            return content;
-        }
-        catch (Exception ex) when (ex is not LanguageModelException)
-        {
-            _logger.LogError(ex, "Failed to generate response with Anthropic");
-            throw new LanguageModelException("anthropic", _config.Name, "Response generation failed", ex);
-        }
-    }
-
-    public async Task<string> GenerateWithToolsAsync(
-        string systemPrompt,
-        string userPrompt,
-        ServerConfiguration serverConfig,
-        CancellationToken cancellationToken = default)
-    {
-        _logger.LogDebug("Generating response with tools using Anthropic for server: {ServerPath}", serverConfig.Path);
-
-        try
-        {
-            var toolResponse = await _mcpClientService.ExecuteToolInteractionAsync(
-                serverConfig, userPrompt, cancellationToken);
-
-            var evaluationPrompt = $"""
-                Based on the following tool interaction, provide a comprehensive response:
-                
-                User Query: {userPrompt}
-                Tool Response: {toolResponse}
-                
-                Please analyze and synthesize the information from the tool response to provide a complete answer.
-                """;
-
-            return await GenerateResponseAsync(systemPrompt, evaluationPrompt, cancellationToken);
-        }
-        catch (Exception ex) when (ex is not LanguageModelException)
-        {
-            _logger.LogError(ex, "Failed to generate response with tools using Anthropic");
-            throw new LanguageModelException("anthropic", _config.Name, "Tool-based response generation failed", ex);
         }
     }
 }

@@ -9,21 +9,20 @@ using System.Diagnostics;
 namespace MCP.Evals.Services;
 
 /// <summary>
-/// Factory for creating MCP client transports
-/// Follows SRP and Factory pattern - only responsible for transport creation
+/// Creates MCP client transports for different connection types
 /// </summary>
-public class TransportFactory : ITransportFactory
+public class TransportCreationService : ITransportCreationService
 {
-    private readonly IServerTypeDetector _serverTypeDetector;
-    private readonly IServerProcessManager _processManager;
-    private readonly ILogger<TransportFactory> _logger;
+    private readonly IServerTypeDetectionService _serverTypeDetector;
+    private readonly IServerProcessManagementService _processManager;
+    private readonly ILogger<TransportCreationService> _logger;
     private readonly List<Process> _runningProcesses;
     private readonly bool _verboseLogging;
 
-    public TransportFactory(
-        IServerTypeDetector serverTypeDetector,
-        IServerProcessManager processManager,
-        ILogger<TransportFactory> logger)
+    public TransportCreationService(
+        IServerTypeDetectionService serverTypeDetector,
+        IServerProcessManagementService processManager,
+        ILogger<TransportCreationService> logger)
     {
         _serverTypeDetector = serverTypeDetector;
         _processManager = processManager;

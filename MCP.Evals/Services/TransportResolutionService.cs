@@ -4,10 +4,9 @@ using MCP.Evals.Models;
 namespace MCP.Evals.Services;
 
 /// <summary>
-/// Service for resolving transport types based on server configuration
-/// Follows SRP - only responsible for transport type resolution
+/// Resolves transport types based on server configuration
 /// </summary>
-public class TransportResolver : ITransportResolver
+public class TransportResolutionService : ITransportResolutionService
 {
     public string ResolveTransportType(ServerConfiguration serverConfig)
     {

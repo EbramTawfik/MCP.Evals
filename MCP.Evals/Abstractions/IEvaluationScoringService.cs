@@ -3,9 +3,9 @@ using MCP.Evals.Models;
 namespace MCP.Evals.Abstractions;
 
 /// <summary>
-/// Interface for evaluation scoring following SRP
+/// Interface for evaluation scoring service
 /// </summary>
-public interface IEvaluationScorer
+public interface IEvaluationScoringService
 {
     /// <summary>
     /// Score a response against a prompt using LLM-based evaluation

@@ -9,23 +9,22 @@ using System.Text.Json;
 namespace MCP.Evals.Services;
 
 /// <summary>
-/// Azure OpenAI language model implementation with direct HTTP calls
-/// Handles the specific Azure OpenAI URL format and API version requirements
+/// Provides Azure OpenAI language model functionality with direct HTTP calls
 /// </summary>
-public class AzureOpenAILanguageModel : ILanguageModel
+public class AzureOpenAILanguageService : ILanguageModel
 {
     private readonly HttpClient _httpClient;
     private readonly LanguageModelConfiguration _config;
-    private readonly ILogger<AzureOpenAILanguageModel> _logger;
+    private readonly ILogger<AzureOpenAILanguageService> _logger;
     private readonly IMcpClientService _mcpClientService;
     private readonly string _endpoint;
     private readonly string _apiKey;
     private readonly string _apiVersion;
 
-    public AzureOpenAILanguageModel(
+    public AzureOpenAILanguageService(
         HttpClient httpClient,
         IOptions<LanguageModelConfiguration> config,
-        ILogger<AzureOpenAILanguageModel> logger,
+        ILogger<AzureOpenAILanguageService> logger,
         IMcpClientService mcpClientService,
         string endpoint,
         string apiKey,

@@ -4,10 +4,9 @@ using MCP.Evals.Models;
 namespace MCP.Evals.Services;
 
 /// <summary>
-/// Service for detecting server types based on file paths and configuration
-/// Follows SRP - only responsible for server type detection
+/// Detects server types based on file paths and configuration
 /// </summary>
-public class ServerTypeDetector : IServerTypeDetector
+public class ServerTypeDetectionService : IServerTypeDetectionService
 {
     public ServerType DetectServerType(string serverPath, ServerConfiguration serverConfig)
     {

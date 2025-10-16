@@ -3,9 +3,9 @@ using MCP.Evals.Models;
 namespace MCP.Evals.Abstractions;
 
 /// <summary>
-/// Main evaluation orchestrator interface following DIP
+/// Interface for evaluation orchestration service
 /// </summary>
-public interface IEvaluationOrchestrator
+public interface IEvaluationOrchestrationService
 {
     /// <summary>
     /// Run a single evaluation

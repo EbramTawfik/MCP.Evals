@@ -7,21 +7,20 @@ using System.Diagnostics;
 namespace MCP.Evals.Services;
 
 /// <summary>
-/// Main evaluation orchestrator following DIP
-/// Depends on abstractions, not concrete implementations
+/// Orchestrates evaluation workflows and coordinates between services
 /// </summary>
-public class EvaluationOrchestrator : IEvaluationOrchestrator
+public class EvaluationOrchestrationService : IEvaluationOrchestrationService
 {
-    private readonly ILogger<EvaluationOrchestrator> _logger;
+    private readonly ILogger<EvaluationOrchestrationService> _logger;
     private readonly IMcpClientService _mcpClientService;
-    private readonly IEvaluationScorer _evaluationScorer;
+    private readonly IEvaluationScoringService _evaluationScorer;
     private readonly IMetricsCollector _metricsCollector;
     private readonly IEnumerable<IConfigurationLoader> _configurationLoaders;
 
-    public EvaluationOrchestrator(
-        ILogger<EvaluationOrchestrator> logger,
+    public EvaluationOrchestrationService(
+        ILogger<EvaluationOrchestrationService> logger,
         IMcpClientService mcpClientService,
-        IEvaluationScorer evaluationScorer,
+        IEvaluationScoringService evaluationScorer,
         IMetricsCollector metricsCollector,
         IEnumerable<IConfigurationLoader> configurationLoaders)
     {
