@@ -270,7 +270,27 @@ public class EvaluateCommand : Command
                 output += $"✅ {result.Name}\n";
                 output += $"   📊 Score: {result.Score.AverageScore:F1}/5.0 ({GetScoreEmoji(result.Score.AverageScore)})\n";
                 output += $"   ⏱️  Duration: {result.Duration.TotalSeconds:F1}s\n";
-                output += $"   📝 Details: Accuracy:{result.Score.Accuracy} Completeness:{result.Score.Completeness} Relevance:{result.Score.Relevance} Clarity:{result.Score.Clarity} Reasoning:{result.Score.Reasoning}\n\n";
+                
+                // Show detailed breakdown to understand low scores
+                output += $"   � Breakdown: Accuracy:{result.Score.Accuracy} Completeness:{result.Score.Completeness} Relevance:{result.Score.Relevance} Clarity:{result.Score.Clarity} Reasoning:{result.Score.Reasoning}\n";
+                
+                // Show what was tested and the response
+                output += $"   📝 Test: \"{result.Prompt}\"\n";
+                if (!string.IsNullOrEmpty(result.Response))
+                {
+                    var responsePreview = result.Response.Length > 100 
+                        ? result.Response.Substring(0, 100) + "..."
+                        : result.Response;
+                    output += $"   📤 Response: \"{responsePreview}\"\n";
+                }
+                
+                // Add reasoning/comments if available and not default
+                if (!string.IsNullOrEmpty(result.Score.OverallComments) && 
+                    result.Score.OverallComments != "No comments provided")
+                {
+                    output += $"   💭 Reason: {result.Score.OverallComments}\n";
+                }
+                output += "\n";
             }
             else
             {

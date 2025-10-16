@@ -80,6 +80,13 @@ public class AzureOpenAILanguageModel : ILanguageModel
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             _httpClient.DefaultRequestHeaders.Clear();
+            
+            // Ensure API key is not null before adding to headers
+            if (string.IsNullOrEmpty(_apiKey))
+            {
+                throw new InvalidOperationException("Azure OpenAI API key is null or empty. Please set the AZURE_OPENAI_API_KEY environment variable.");
+            }
+            
             _httpClient.DefaultRequestHeaders.Add("api-key", _apiKey);
 
             if (isVerbose)
