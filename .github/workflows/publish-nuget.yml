@@ -1,0 +1,41 @@
+name: Build and Publish
+
+on:
+  push:
+    tags:
+      - "v*" # Trigger on version tags like v0.0.1, v1.0.0, etc.
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore MCP.Evals/MCP.Evals.csproj
+
+      - name: Build project
+        run: dotnet build MCP.Evals/MCP.Evals.csproj --configuration Release --no-restore
+
+      - name: Pack NuGet package
+        run: dotnet pack MCP.Evals/MCP.Evals.csproj --configuration Release --no-build --output ./artifacts
+
+      - name: List artifacts
+        run: ls -la ./artifacts/
+
+      - name: Publish to NuGet
+        run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-package
+          path: ./artifacts/*.nupkg
