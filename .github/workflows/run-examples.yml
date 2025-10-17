@@ -47,17 +47,17 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Cache .NET packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
-          path: ~/.nuget/packages
+          path: ~\.nuget\packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
           restore-keys: |
             ${{ runner.os }}-nuget-
 
       - name: Cache Node modules
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
-          path: ~/.npm
+          path: ~\AppData\npm-cache
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
@@ -146,7 +146,7 @@ jobs:
 
       - name: Upload C# evaluation results
         if: github.event.inputs.run_csharp != 'false' && always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: csharp-evaluation-results
           path: ${{ runner.temp }}/csharp-results.json
@@ -154,7 +154,7 @@ jobs:
 
       - name: Upload TypeScript evaluation results
         if: github.event.inputs.run_typescript != 'false' && always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: typescript-evaluation-results
           path: ${{ runner.temp }}/typescript-results.json
