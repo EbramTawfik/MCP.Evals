@@ -203,10 +203,6 @@ MCP.Evals follows SOLID principles with a clean architecture:
 - **Abstractions** - Interfaces for dependency injection
 - **Validation** - FluentValidation rules for configuration validation
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## Support
 
 - 📖 [Model Context Protocol Documentation](https://modelcontextprotocol.io/)
