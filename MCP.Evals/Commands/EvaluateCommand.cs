@@ -91,11 +91,9 @@ public class EvaluateCommand : Command
                 Console.WriteLine($"[INFO] Full Config Path: {Path.GetFullPath(args.ConfigPath)}");
             }
 
-            Console.WriteLine("[TRACE] Step 1: Creating host builder...");
             // Build and configure the host with command-line options
             var hostBuilder = CreateHostBuilderWithOptions(args.Verbose, args.EnableMetrics, args.ApiKey, args.Endpoint);
 
-            Console.WriteLine("[TRACE] Step 2: Configuring logging...");
             // Remove the environment variable setting since we're passing parameters directly
             // Environment.SetEnvironmentVariable("MCP_EVALS_VERBOSE", verbose.ToString());
 
@@ -119,14 +117,10 @@ public class EvaluateCommand : Command
                 });
             }
 
-            Console.WriteLine("[TRACE] Step 3: Building host...");
             using var host = hostBuilder.Build();
 
-            Console.WriteLine("[TRACE] Step 4: Getting services...");
             var logger = host.Services.GetRequiredService<ILogger<EvaluateCommand>>();
             var orchestrator = host.Services.GetRequiredService<IEvaluationOrchestrationService>();
-
-            Console.WriteLine("[TRACE] Step 5: Services obtained successfully");
 
             if (args.Verbose)
             {

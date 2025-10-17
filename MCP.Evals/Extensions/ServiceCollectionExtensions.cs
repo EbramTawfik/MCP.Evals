@@ -28,27 +28,27 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         Action<McpEvalsOptions>? configureOptions = null)
     {
-        Console.WriteLine("[TRACE] Starting service registration...");
+
 
         // Configure options
         var options = new McpEvalsOptions();
         configureOptions?.Invoke(options);
         services.AddSingleton(Options.Create(options));
 
-        Console.WriteLine("[TRACE] Adding core services...");
+
         // Add core services following SOLID principles
         AddCoreServices(services);
 
-        Console.WriteLine("[TRACE] Adding infrastructure services...");
+
         AddInfrastructureServices(services, options);
 
-        Console.WriteLine("[TRACE] Adding validation services...");
+
         AddValidationServices(services);
 
-        Console.WriteLine("[TRACE] Adding metrics services...");
+
         AddMetricsServices(services, options);
 
-        Console.WriteLine("[TRACE] Service registration completed.");
+
         return services;
     }
 
@@ -77,7 +77,6 @@ public static class ServiceCollectionExtensions
 
     private static void AddInfrastructureServices(IServiceCollection services, McpEvalsOptions options)
     {
-        Console.WriteLine("[TRACE] Adding language model configuration...");
         // Language model configuration - use object initialization for init-only properties
         var languageModelConfig = new LanguageModelConfiguration
         {
@@ -89,20 +88,15 @@ public static class ServiceCollectionExtensions
         };
         services.AddSingleton(Options.Create(languageModelConfig));
 
-        Console.WriteLine("[TRACE] Adding HTTP client...");
         // HTTP client for Azure OpenAI custom implementation
         services.AddHttpClient();
 
-        Console.WriteLine("[TRACE] Registering language model factory...");
         // Language model implementations (LSP - all can be substituted)
         services.AddSingleton<ILanguageModel>(provider =>
         {
-            Console.WriteLine("[TRACE] Inside language model factory...");
             var config = provider.GetRequiredService<IOptions<LanguageModelConfiguration>>();
             var logger = provider.GetRequiredService<ILogger<OpenAILanguageService>>();
             // Removed IMcpClientService dependency to fix circular dependency
-
-            Console.WriteLine($"[TRACE] Language model provider: {config.Value.Provider}");
             // Get command options 
             var commandOptions = provider.GetService<EvaluationCommandOptions>();
             var isVerbose = commandOptions?.Verbose ?? false;
@@ -116,8 +110,6 @@ public static class ServiceCollectionExtensions
                 _ => throw new InvalidOperationException($"Unsupported language model provider: {config.Value.Provider}")
             };
         });
-
-        Console.WriteLine("[TRACE] Adding configuration loaders...");
 
         // Configuration loaders (OCP - can add new types without modifying existing code)
         services.AddSingleton<IConfigurationLoader, YamlConfigurationLoader>();
