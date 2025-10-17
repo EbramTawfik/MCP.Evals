@@ -1,5 +1,7 @@
 # MCP.Evals
 
+[![Build and Publish](https://github.com/EbramTawfik/MCP.Evals/actions/workflows/publish-nuget.yml/badge.svg)](https://github.com/EbramTawfik/MCP.Evals/actions/workflows/publish-nuget.yml)
+[![Run Examples](https://github.com/EbramTawfik/MCP.Evals/actions/workflows/run-examples.yml/badge.svg)](https://github.com/EbramTawfik/MCP.Evals/actions/workflows/run-examples.yml)
 [![NuGet Version](https://img.shields.io/nuget/v/MCP.Evals)](https://www.nuget.org/packages/MCP.Evals)
 [![.NET](https://img.shields.io/badge/.NET-8.0-blue)](https://dotnet.microsoft.com/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/EbramTawfik/MCP.Evals/blob/main/LICENSE)
