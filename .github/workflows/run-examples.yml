@@ -1,0 +1,180 @@
+name: Run MCP Evaluation Examples
+
+on:
+  # Run on push to main branch
+  push:
+    branches: [main]
+
+  # Run on pull requests to main
+  pull_request:
+    branches: [main]
+
+  # Allow manual workflow dispatch
+  workflow_dispatch:
+    inputs:
+      run_csharp:
+        description: "Run C# examples"
+        required: false
+        default: "true"
+        type: boolean
+      run_typescript:
+        description: "Run TypeScript examples"
+        required: false
+        default: "true"
+        type: boolean
+
+env:
+  DOTNET_VERSION: "8.0"
+  NODE_VERSION: "18"
+
+jobs:
+  run-examples:
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Cache .NET packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Cache Node modules
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Restore .NET dependencies
+        run: dotnet restore MCP.Evals/MCP.Evals.csproj
+
+      - name: Build MCP.Evals
+        run: dotnet build MCP.Evals/MCP.Evals.csproj --configuration Release --no-restore
+
+      - name: Build C# MCP Sample Server
+        if: github.event.inputs.run_csharp != 'false'
+        run: |
+          cd mcp-sample-projects/CSharpMcpSample
+          dotnet build --configuration Release
+
+      - name: Install TypeScript MCP Sample Server dependencies
+        if: github.event.inputs.run_typescript != 'false'
+        run: |
+          cd mcp-sample-projects/typescript-sample
+          npm install
+
+      - name: Build TypeScript MCP Sample Server
+        if: github.event.inputs.run_typescript != 'false'
+        run: |
+          cd mcp-sample-projects/typescript-sample
+          npm run build
+
+      - name: Install yq for YAML processing
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/mikefarah/yq/releases/latest/download/yq_windows_amd64.exe" -OutFile "$env:TEMP\yq.exe"
+          $env:PATH += ";$env:TEMP"
+
+      - name: Create temporary config for C# example
+        if: github.event.inputs.run_csharp != 'false'
+        run: |
+          # Copy the example config and inject Azure credentials
+          Copy-Item "examples/csharp-server-evals.yaml" "$env:TEMP/csharp-config.yaml"
+
+          # Inject Azure credentials into the existing YAML structure
+          & "$env:TEMP/yq.exe" eval '.model.apiKey = strenv(AZURE_OPENAI_API_KEY)' -i "$env:TEMP/csharp-config.yaml"
+          & "$env:TEMP/yq.exe" eval '.model.endpoint = strenv(AZURE_OPENAI_ENDPOINT)' -i "$env:TEMP/csharp-config.yaml"
+
+          # Update the server path to use the Release build with .exe extension for Windows
+          & "$env:TEMP/yq.exe" eval '.server.path = "mcp-sample-projects/CSharpMcpSample/bin/Release/net8.0/CSharpMcpSample.exe"' -i "$env:TEMP/csharp-config.yaml"
+
+          Write-Host "Updated C# configuration:"
+          Get-Content "$env:TEMP/csharp-config.yaml"
+        env:
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+
+      - name: Create temporary config for TypeScript example
+        if: github.event.inputs.run_typescript != 'false'
+        run: |
+          # Copy the example config and inject Azure credentials
+          Copy-Item "examples/typescript-server-evals.yaml" "$env:TEMP/typescript-config.yaml"
+
+          # Inject Azure credentials into the existing YAML structure
+          & "$env:TEMP/yq.exe" eval '.model.apiKey = strenv(AZURE_OPENAI_API_KEY)' -i "$env:TEMP/typescript-config.yaml"
+          & "$env:TEMP/yq.exe" eval '.model.endpoint = strenv(AZURE_OPENAI_ENDPOINT)' -i "$env:TEMP/typescript-config.yaml"
+
+          Write-Host "Updated TypeScript configuration:"
+          Get-Content "$env:TEMP/typescript-config.yaml"
+        env:
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+
+      - name: Run C# MCP Server Evaluation
+        if: github.event.inputs.run_csharp != 'false'
+        run: |
+          Set-Location MCP.Evals
+          dotnet run --configuration Release -- evaluate "$env:TEMP/csharp-config.yaml" --verbose --output "$env:TEMP/csharp-results.json" --format json
+        env:
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+
+      - name: Run TypeScript MCP Server Evaluation
+        if: github.event.inputs.run_typescript != 'false'
+        run: |
+          Set-Location MCP.Evals
+          dotnet run --configuration Release -- evaluate "$env:TEMP/typescript-config.yaml" --verbose --output "$env:TEMP/typescript-results.json" --format json
+        env:
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+
+      - name: Upload C# evaluation results
+        if: github.event.inputs.run_csharp != 'false' && always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: csharp-evaluation-results
+          path: ${{ runner.temp }}/csharp-results.json
+          retention-days: 30
+
+      - name: Upload TypeScript evaluation results
+        if: github.event.inputs.run_typescript != 'false' && always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: typescript-evaluation-results
+          path: ${{ runner.temp }}/typescript-results.json
+          retention-days: 30
+
+      - name: Display evaluation summaries
+        if: always()
+        run: |
+          "## Evaluation Results Summary" | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+
+          if (Test-Path "$env:TEMP/csharp-results.json") {
+            "### C# MCP Server Results" | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+            '```json' | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+            Get-Content "$env:TEMP/csharp-results.json" | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+            '```' | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+          }
+
+          if (Test-Path "$env:TEMP/typescript-results.json") {
+            "### TypeScript MCP Server Results" | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+            '```json' | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+            Get-Content "$env:TEMP/typescript-results.json" | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+            '```' | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+          }
