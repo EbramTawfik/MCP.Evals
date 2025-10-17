@@ -8,7 +8,7 @@ model:
 
 server:
   transport: stdio
-  path: "../mcp-sample-projects/CSharpMcpSample/bin/Debug/net9.0/win-x64/CSharpMcpSample.exe"
+  path: "../mcp-sample-projects/CSharpMcpSample/bin/Release/net9.0/win-x64/CSharpMcpSample.exe"
 
 # List of evaluations to run against the C# server
 evals:
