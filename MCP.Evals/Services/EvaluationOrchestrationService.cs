@@ -13,6 +13,7 @@ public class EvaluationOrchestrationService : IEvaluationOrchestrationService
 {
     private readonly ILogger<EvaluationOrchestrationService> _logger;
     private readonly IMcpClientService _mcpClientService;
+    private readonly IMcpConnectionManager _connectionManager;
     private readonly IEvaluationScoringService _evaluationScorer;
     private readonly IMetricsCollector _metricsCollector;
     private readonly IEnumerable<IConfigurationLoader> _configurationLoaders;
@@ -20,12 +21,14 @@ public class EvaluationOrchestrationService : IEvaluationOrchestrationService
     public EvaluationOrchestrationService(
         ILogger<EvaluationOrchestrationService> logger,
         IMcpClientService mcpClientService,
+        IMcpConnectionManager connectionManager,
         IEvaluationScoringService evaluationScorer,
         IMetricsCollector metricsCollector,
         IEnumerable<IConfigurationLoader> configurationLoaders)
     {
         _logger = logger;
         _mcpClientService = mcpClientService;
+        _connectionManager = connectionManager;
         _evaluationScorer = evaluationScorer;
         _metricsCollector = metricsCollector;
         _configurationLoaders = configurationLoaders;
@@ -127,34 +130,43 @@ public class EvaluationOrchestrationService : IEvaluationOrchestrationService
     {
         _logger.LogInformation("Running {EvaluationCount} evaluations", configuration.Evaluations.Count);
 
-        var results = new List<EvaluationResult>();
-        var semaphore = new SemaphoreSlim(Environment.ProcessorCount, Environment.ProcessorCount);
-
-        var tasks = configuration.Evaluations.Select(async evaluation =>
+        try
         {
-            await semaphore.WaitAsync(cancellationToken);
-            try
+            var results = new List<EvaluationResult>();
+            var semaphore = new SemaphoreSlim(Environment.ProcessorCount, Environment.ProcessorCount);
+
+            var tasks = configuration.Evaluations.Select(async evaluation =>
             {
-                return await RunEvaluationAsync(evaluation, configuration.Server, cancellationToken);
-            }
-            finally
-            {
-                semaphore.Release();
-            }
-        });
+                await semaphore.WaitAsync(cancellationToken);
+                try
+                {
+                    return await RunEvaluationAsync(evaluation, configuration.Server, cancellationToken);
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
 
-        var evaluationResults = await Task.WhenAll(tasks);
-        results.AddRange(evaluationResults);
+            var evaluationResults = await Task.WhenAll(tasks);
+            results.AddRange(evaluationResults);
 
-        var successCount = results.Count(r => r.IsSuccess);
-        var failureCount = results.Count - successCount;
-        var averageScore = results.Where(r => r.IsSuccess).Average(r => r.Score.AverageScore);
+            var successCount = results.Count(r => r.IsSuccess);
+            var failureCount = results.Count - successCount;
+            var averageScore = results.Where(r => r.IsSuccess).Average(r => r.Score.AverageScore);
 
-        _logger.LogInformation(
-            "All evaluations completed. Success: {SuccessCount}, Failed: {FailureCount}, Average Score: {AverageScore:F2}",
-            successCount, failureCount, averageScore);
+            _logger.LogInformation(
+                "All evaluations completed. Success: {SuccessCount}, Failed: {FailureCount}, Average Score: {AverageScore:F2}",
+                successCount, failureCount, averageScore);
 
-        return results.AsReadOnly();
+            return results.AsReadOnly();
+        }
+        finally
+        {
+            // Clean up all connections after all evaluations are complete
+            _logger.LogDebug("Cleaning up MCP connections after evaluation batch");
+            await _connectionManager.CloseAllConnectionsAsync();
+        }
     }
 
     public async Task<IReadOnlyList<EvaluationResult>> RunEvaluationsFromFileAsync(

@@ -10,24 +10,23 @@ namespace MCP.Evals.Services;
 
 /// <summary>
 /// Creates MCP client transports for different connection types
+/// Now uses ServerProcessManager to avoid duplicate server processes
 /// </summary>
 public class TransportCreationService : ITransportCreationService
 {
     private readonly IServerTypeDetectionService _serverTypeDetector;
-    private readonly IServerProcessManagementService _processManager;
+    private readonly IServerProcessManager _serverProcessManager;
     private readonly ILogger<TransportCreationService> _logger;
-    private readonly List<Process> _runningProcesses;
     private readonly bool _verboseLogging;
 
     public TransportCreationService(
         IServerTypeDetectionService serverTypeDetector,
-        IServerProcessManagementService processManager,
+        IServerProcessManager serverProcessManager,
         ILogger<TransportCreationService> logger)
     {
         _serverTypeDetector = serverTypeDetector;
-        _processManager = processManager;
+        _serverProcessManager = serverProcessManager;
         _logger = logger;
-        _runningProcesses = new List<Process>();
         _verboseLogging = Environment.GetEnvironmentVariable("MCP_EVALS_VERBOSE") == "true";
     }
 
@@ -60,63 +59,21 @@ public class TransportCreationService : ITransportCreationService
             throw new ArgumentException($"Invalid HTTP URL: {serverConfig.Url}");
         }
 
-        // If no path is specified, assume server is already running
-        if (string.IsNullOrEmpty(serverConfig.Path))
-        {
-            if (_verboseLogging)
-            {
-                _logger.LogInformation("Using direct HTTP connection to: {Url}", serverConfig.Url);
-            }
-
-            return new HttpClientTransport(new HttpClientTransportOptions
-            {
-                Name = "HttpServer",
-                Endpoint = serverUri
-            });
-        }
-
-        // Start server and then connect
-        var serverPath = Path.GetFullPath(serverConfig.Path);
-        var serverType = _serverTypeDetector.DetectServerType(serverPath, serverConfig);
+        // Use server process manager to get or start the server process
+        // This will reuse existing processes instead of creating new ones
+        await _serverProcessManager.GetOrStartServerProcessAsync(serverConfig, cancellationToken);
 
         if (_verboseLogging)
         {
-            _logger.LogInformation("Starting {ServerType} HTTP server from: {ServerPath} and connecting to: {Url}",
-                serverType, serverPath, serverConfig.Url);
+            var action = string.IsNullOrEmpty(serverConfig.Path) ? "Connecting to existing" : "Using managed";
+            _logger.LogInformation("{Action} HTTP server at: {Url}", action, serverConfig.Url);
         }
 
-        var serverProcess = await _processManager.StartServerAsync(
-            serverType, serverPath, serverConfig, cancellationToken);
-
-        try
+        return new HttpClientTransport(new HttpClientTransportOptions
         {
-            // Wait for server to be ready
-            var isReady = await _processManager.IsServerReadyAsync(serverConfig.Url, cancellationToken);
-            if (!isReady)
-            {
-                serverProcess.Kill();
-                throw new McpClientException(serverPath, "HTTP server failed to start or become ready");
-            }
-
-            // Store process for cleanup
-            _runningProcesses.Add(serverProcess);
-
-            if (_verboseLogging)
-            {
-                _logger.LogInformation("HTTP server started and connected successfully");
-            }
-
-            return new HttpClientTransport(new HttpClientTransportOptions
-            {
-                Name = "HttpServer",
-                Endpoint = serverUri
-            });
-        }
-        catch
-        {
-            serverProcess.Kill();
-            throw;
-        }
+            Name = "HttpServer",
+            Endpoint = serverUri
+        });
     }
 
     private IClientTransport CreateStdioTransport(ServerConfiguration serverConfig)

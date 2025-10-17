@@ -49,6 +49,9 @@ public static class ServiceCollectionExtensions
         // Evaluation scoring (scores responses using language models)
         services.AddSingleton<IEvaluationScoringService, EvaluationScoringService>();
 
+        // MCP connection management (handles connection pooling and reuse)
+        services.AddSingleton<IMcpConnectionManager, McpConnectionManager>();
+
         // MCP client operations (handles MCP protocol communication)
         services.AddSingleton<IMcpClientService, McpClientService>();
 
@@ -56,6 +59,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ITransportResolutionService, TransportResolutionService>();
         services.AddSingleton<IServerTypeDetectionService, ServerTypeDetectionService>();
         services.AddSingleton<IServerProcessManagementService, ServerProcessManagementService>();
+        services.AddSingleton<IServerProcessManager, ServerProcessManager>();
         services.AddSingleton<ITransportCreationService, TransportCreationService>();
         services.AddSingleton<IToolExecutionPlanningService, ToolExecutionPlanningService>();
     }
