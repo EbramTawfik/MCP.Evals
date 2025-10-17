@@ -2,7 +2,7 @@
 
 [![NuGet Version](https://img.shields.io/nuget/v/MCP.Evals)](https://www.nuget.org/packages/MCP.Evals)
 [![.NET](https://img.shields.io/badge/.NET-8.0-blue)](https://dotnet.microsoft.com/)
-[![License](https://img.shields.io/github/license/EbramTawfik/MCP.Evals)](https://github.com/EbramTawfik/MCP.Evals/blob/main/LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/EbramTawfik/MCP.Evals/blob/main/LICENSE)
 
 An evaluation framework for testing [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) servers with language models. MCP.Evals provides automated testing capabilities to validate MCP server implementations across different scenarios and ensure reliable tool execution.
 
