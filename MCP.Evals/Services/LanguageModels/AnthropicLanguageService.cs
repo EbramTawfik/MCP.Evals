@@ -4,7 +4,7 @@ using MCP.Evals.Exceptions;
 using MCP.Evals.Abstractions;
 using MCP.Evals.Models;
 
-namespace MCP.Evals.Services;
+namespace MCP.Evals.Services.LanguageModels;
 
 /// <summary>
 /// Provides Anthropic language model functionality

@@ -6,7 +6,7 @@ using MCP.Evals.Models;
 using System.Text;
 using System.Text.Json;
 
-namespace MCP.Evals.Services;
+namespace MCP.Evals.Services.LanguageModels;
 
 /// <summary>
 /// Provides Azure OpenAI language model functionality with direct HTTP calls

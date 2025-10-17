@@ -6,7 +6,7 @@ using MCP.Evals.Models;
 using OpenAI;
 using OpenAI.Chat;
 
-namespace MCP.Evals.Services;
+namespace MCP.Evals.Services.LanguageModels;
 
 /// <summary>
 /// Provides OpenAI language model functionality

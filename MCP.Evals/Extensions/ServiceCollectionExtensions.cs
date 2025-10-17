@@ -10,6 +10,7 @@ using MCP.Evals.Validation;
 using MCP.Evals.Metrics;
 using OpenAI;
 using Anthropic.SDK;
+using MCP.Evals.Services.LanguageModels;
 
 namespace MCP.Evals.Extensions;
 
