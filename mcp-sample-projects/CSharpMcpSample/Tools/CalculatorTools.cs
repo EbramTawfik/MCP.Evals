@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using ModelContextProtocol.Server;
 
+namespace CSharpMcpSample.Tools;
+
 /// <summary>
 /// Sample MCP tools for evaluation and comparison purposes.
 /// These tools provide equivalent functionality to the TypeScript sample server.
@@ -38,19 +40,4 @@ internal class CalculatorTools
         Console.Error.WriteLine($"C# MCP: Echoing \"{message}\"");
         return new EchoResult { Echo = echo };
     }
-}
-
-public record AddResult
-{
-    public double Result { get; init; }
-}
-
-public record MultiplyResult
-{
-    public double Result { get; init; }
-}
-
-public record EchoResult
-{
-    public string Echo { get; init; } = string.Empty;
 }

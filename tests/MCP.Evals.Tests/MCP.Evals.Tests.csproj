@@ -10,8 +10,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\MCP.Evals.Core\MCP.Evals.Core.csproj" />
-        <ProjectReference Include="..\..\src\MCP.Evals.Infrastructure\MCP.Evals.Infrastructure.csproj" />
+        <ProjectReference Include="..\..\MCP.Evals\MCP.Evals.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -25,9 +24,9 @@
         <PackageReference Include="Moq" Version="4.20.69" />
 
         <!-- Testing utilities -->
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
-        <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
-        <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.10" />
 
         <!-- GitHub Actions Test Reporting -->
         <PackageReference Include="GitHubActionsTestLogger" Version="2.3.3" />

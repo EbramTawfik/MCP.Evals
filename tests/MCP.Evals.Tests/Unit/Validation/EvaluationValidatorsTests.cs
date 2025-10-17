@@ -1,6 +1,6 @@
 using FluentAssertions;
-using MCP.Evals.Core.Models;
-using MCP.Evals.Core.Validation;
+using MCP.Evals.Models;
+using MCP.Evals.Validation;
 using Xunit;
 
 namespace MCP.Evals.Tests.Unit.Validation;

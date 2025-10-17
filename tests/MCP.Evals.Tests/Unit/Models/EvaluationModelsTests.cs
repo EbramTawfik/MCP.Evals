@@ -1,5 +1,5 @@
 using FluentAssertions;
-using MCP.Evals.Core.Models;
+using MCP.Evals.Models;
 using Xunit;
 
 namespace MCP.Evals.Tests.Unit.Models;
