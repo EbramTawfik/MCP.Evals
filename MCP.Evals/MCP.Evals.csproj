@@ -7,11 +7,29 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <LangVersion>latest</LangVersion>
         <PackAsTool>true</PackAsTool>
-        <ToolCommandName>mcp-eval</ToolCommandName>
+        <ToolCommandName>McpEval</ToolCommandName>
         <AssemblyVersion>1.0.0</AssemblyVersion>
         <FileVersion>1.0.0</FileVersion>
         <PublishSingleFile>true</PublishSingleFile>
         <SelfContained>false</SelfContained>
+
+        <!-- NuGet Package Metadata -->
+        <PackageId>MCP.Evals</PackageId>
+        <PackageVersion>1.0.0</PackageVersion>
+        <Authors>Ebram Tawfik</Authors>
+        <Company>Ebram Tawfik</Company>
+        <Product>MCP.Evals</Product>
+        <Description>A comprehensive evaluation framework for testing Model Context Protocol (MCP) servers with language models. Provides automated testing capabilities, multi-LLM support, and built-in metrics collection.</Description>
+        <Summary>Evaluation framework for MCP servers with automated testing and multi-language model support</Summary>
+        <PackageTags>mcp;model-context-protocol;evaluation;testing;llm;openai;anthropic;azure;cli-tool</PackageTags>
+        <PackageProjectUrl>https://github.com/EbramTawfik/MCP.Evals</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/EbramTawfik/MCP.Evals</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageReleaseNotes>Initial release of MCP.Evals evaluation framework</PackageReleaseNotes>
+        <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+        <Copyright>Copyright © 2025 Ebram Tawfik</Copyright>
     </PropertyGroup>
 
     <ItemGroup>
@@ -55,6 +73,10 @@
         <PackageReference Include="FluentValidation" Version="12.0.0" />
         <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.0.0" />
         <PackageReference Include="Ardalis.GuardClauses" Version="5.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="../README.md" Pack="true" PackagePath="\" />
     </ItemGroup>
 
 </Project>
