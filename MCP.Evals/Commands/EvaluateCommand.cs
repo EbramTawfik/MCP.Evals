@@ -67,7 +67,7 @@ public class EvaluateCommand : Command
             {
                 ConfigPath = context.ParseResult.GetValueForArgument(configPathArgument),
                 OutputPath = context.ParseResult.GetValueForOption(outputOption),
-                Format = context.ParseResult.GetValueForOption(formatOption),
+                Format = context.ParseResult.GetValueForOption(formatOption) ?? "clean",
                 Verbose = context.ParseResult.GetValueForOption(verboseOption),
                 Parallel = context.ParseResult.GetValueForOption(parallelOption),
                 ApiKey = context.ParseResult.GetValueForOption(apiKeyOption),
@@ -93,9 +93,6 @@ public class EvaluateCommand : Command
 
             // Build and configure the host with command-line options
             var hostBuilder = CreateHostBuilderWithOptions(args.Verbose, args.EnableMetrics, args.ApiKey, args.Endpoint);
-
-            // Remove the environment variable setting since we're passing parameters directly
-            // Environment.SetEnvironmentVariable("MCP_EVALS_VERBOSE", verbose.ToString());
 
             if (args.Verbose)
             {
@@ -154,9 +151,6 @@ public class EvaluateCommand : Command
 
             // Generate output
             await GenerateOutputAsync(results, args.OutputPath, args.Format, logger, stopwatch.Elapsed);
-
-            // Clean up environment variable (no longer needed)
-            // Environment.SetEnvironmentVariable("MCP_EVALS_VERBOSE", null);
 
             // Return exit code based on results
             var failedCount = results.Count(r => !r.IsSuccess);

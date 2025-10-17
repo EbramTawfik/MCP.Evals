@@ -5,9 +5,6 @@ using MCP.Evals.Commands;
 using MCP.Evals.Models;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
-using System.Diagnostics;
-using System.Text.Json;
-using System.Text;
 
 namespace MCP.Evals.Services;
 

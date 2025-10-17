@@ -42,9 +42,6 @@ public class ValidateCommand : Command
             // Build and configure the host with command-line options
             var hostBuilder = CreateHostBuilderWithOptions(verbose);
 
-            // Remove the environment variable setting
-            // Environment.SetEnvironmentVariable("MCP_EVALS_VERBOSE", verbose.ToString());
-
             if (verbose)
             {
                 hostBuilder.ConfigureLogging(logging =>
