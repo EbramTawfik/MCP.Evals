@@ -23,7 +23,7 @@
         <PackageProjectUrl>https://github.com/EbramTawfik/MCP.Evals</PackageProjectUrl>
         <RepositoryUrl>https://github.com/EbramTawfik/MCP.Evals</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
-        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageLicenseUrl>https://github.com/EbramTawfik/MCP.Evals/blob/main/LICENSE</PackageLicenseUrl>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageReleaseNotes>Initial release of MCP.Evals evaluation framework</PackageReleaseNotes>
         <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
