@@ -150,7 +150,7 @@ public class EvaluateCommand : Command
             stopwatch.Stop();
 
             // Generate output
-            await GenerateOutputAsync(results, args.OutputPath, args.Format, logger, stopwatch.Elapsed);
+            await GenerateOutputAsync(results, args.OutputPath, args.Format, args.ConfigPath, logger, stopwatch.Elapsed);
 
             // Return exit code based on results
             var failedCount = results.Count(r => !r.IsSuccess);
@@ -178,6 +178,7 @@ public class EvaluateCommand : Command
         IReadOnlyList<Models.EvaluationResult> results,
         string? outputPath,
         string format,
+        string configPath,
         ILogger logger,
         TimeSpan totalDuration)
     {
@@ -193,6 +194,18 @@ public class EvaluateCommand : Command
         if (string.IsNullOrEmpty(outputPath))
         {
             Console.WriteLine(output);
+
+            // For clean format, automatically save as markdown file based on config name
+            if (format.ToLower() == "clean")
+            {
+                var configFileName = Path.GetFileNameWithoutExtension(configPath);
+                var markdownPath = Path.Combine(Path.GetDirectoryName(configPath) ?? Environment.CurrentDirectory, $"{configFileName}.md");
+
+                // Save the same output to file (already in markdown format)
+                await File.WriteAllTextAsync(markdownPath, output);
+                logger.LogInformation("Results automatically saved to markdown file: {MarkdownPath}", markdownPath);
+                Console.WriteLine($"📄 Results saved to: {markdownPath}");
+            }
         }
         else
         {
@@ -283,62 +296,72 @@ public class EvaluateCommand : Command
 
     private static string GenerateCleanOutput(IReadOnlyList<Models.EvaluationResult> results, TimeSpan totalDuration)
     {
-        var output = "\n🔍 MCP Evaluation Results\n";
-        output += new string('=', 50) + "\n\n";
+        var successful = results.Where(r => r.IsSuccess).ToList();
+        var failed = results.Where(r => !r.IsSuccess).ToList();
+        var averageScore = successful.DefaultIfEmpty().Average(r => r?.Score.AverageScore ?? 0);
 
-        // Show individual results as they complete
+        var output = "# 🔍 MCP Evaluation Results\n\n";
+        output += $"*Generated on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC*\n\n";
+
+        // Summary section
+        output += "## 📊 Summary\n\n";
+        output += $"- **Total Evaluations:** {results.Count}\n";
+        output += $"- **Successful:** {successful.Count} ✅\n";
+        output += $"- **Failed:** {failed.Count} ❌\n";
+        output += $"- **Success Rate:** {(successful.Count / (double)results.Count):P1}\n";
+        output += $"- **Average Score:** {averageScore:F2}/5.0 {GetScoreEmoji(averageScore)}\n";
+        output += $"- **Total Duration:** {totalDuration.TotalSeconds:F1} seconds\n\n";
+
+        // Individual results
+        output += "## 📋 Detailed Results\n\n";
+
         foreach (var result in results)
         {
             if (result.IsSuccess)
             {
-                output += $"✅ {result.Name}\n";
-                output += $"   📊 Score: {result.Score.AverageScore:F1}/5.0 ({GetScoreEmoji(result.Score.AverageScore)})\n";
-                output += $"   ⏱️  Duration: {result.Duration.TotalSeconds:F1}s\n";
+                output += $"### ✅ {result.Name}\n\n";
+                output += $"**Score:** {result.Score.AverageScore:F1}/5.0 {GetScoreEmoji(result.Score.AverageScore)}  \n";
+                output += $"**Duration:** {result.Duration.TotalSeconds:F1}s  \n\n";
 
-                // Show detailed breakdown to understand low scores
-                output += $"   � Breakdown: Accuracy:{result.Score.Accuracy} Completeness:{result.Score.Completeness} Relevance:{result.Score.Relevance} Clarity:{result.Score.Clarity} Reasoning:{result.Score.Reasoning}\n";
+                // Score breakdown table
+                output += "| Metric | Score |\n";
+                output += "|--------|-------|\n";
+                output += $"| Accuracy | {result.Score.Accuracy}/5 |\n";
+                output += $"| Completeness | {result.Score.Completeness}/5 |\n";
+                output += $"| Relevance | {result.Score.Relevance}/5 |\n";
+                output += $"| Clarity | {result.Score.Clarity}/5 |\n";
+                output += $"| Reasoning | {result.Score.Reasoning}/5 |\n\n";
 
-                // Show what was tested and the response
-                output += $"   📝 Test: \"{result.Prompt}\"\n";
+                // Test details
+                output += "**Test Prompt:**\n";
+                output += $"> {result.Prompt}\n\n";
+
                 if (!string.IsNullOrEmpty(result.Response))
                 {
-                    var responsePreview = result.Response.Length > 100
-                        ? result.Response.Substring(0, 100) + "..."
+                    output += "**Response:**\n";
+                    var responsePreview = result.Response.Length > 200
+                        ? result.Response.Substring(0, 200) + "..."
                         : result.Response;
-                    output += $"   📤 Response: \"{responsePreview}\"\n";
+                    output += $"```\n{responsePreview}\n```\n\n";
                 }
 
                 // Add reasoning/comments if available and not default
                 if (!string.IsNullOrEmpty(result.Score.OverallComments) &&
                     result.Score.OverallComments != "No comments provided")
                 {
-                    output += $"   💭 Reason: {result.Score.OverallComments}\n";
+                    output += "**Evaluation Comments:**\n";
+                    output += $"> {result.Score.OverallComments}\n\n";
                 }
-                output += "\n";
             }
             else
             {
-                output += $"❌ {result.Name}\n";
-                output += $"   🚫 Error: {result.ErrorMessage}\n";
-                output += $"   ⏱️  Duration: {result.Duration.TotalSeconds:F1}s\n\n";
+                output += $"### ❌ {result.Name}\n\n";
+                output += $"**Error:** {result.ErrorMessage}  \n";
+                output += $"**Duration:** {result.Duration.TotalSeconds:F1}s  \n\n";
             }
+
+            output += "---\n\n";
         }
-
-        // Summary section
-        var successful = results.Where(r => r.IsSuccess).ToList();
-        var failed = results.Where(r => !r.IsSuccess).ToList();
-        var averageScore = successful.DefaultIfEmpty().Average(r => r?.Score.AverageScore ?? 0);
-
-        output += new string('=', 50) + "\n";
-        output += "📊 SUMMARY\n";
-        output += new string('=', 50) + "\n";
-        output += $"📈 Total Evaluations: {results.Count}\n";
-        output += $"✅ Successful: {successful.Count}\n";
-        output += $"❌ Failed: {failed.Count}\n";
-        output += $"🎯 Success Rate: {(successful.Count / (double)results.Count):P1}\n";
-        output += $"⭐ Average Score: {averageScore:F2}/5.0 ({GetScoreEmoji(averageScore)})\n";
-        output += $"⏱️  Total Duration: {totalDuration.TotalSeconds:F1} seconds\n";
-        output += new string('=', 50) + "\n";
 
         return output;
     }

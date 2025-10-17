@@ -90,20 +90,20 @@ jobs:
         if: github.event.inputs.run_csharp != 'false'
         run: |
           Set-Location MCP.Evals
-          dotnet run --configuration Release -- evaluate "../examples/csharp-server-evals.yaml" --verbose --output "$env:TEMP/csharp-results.json" --format json --api-key "${{ secrets.AZURE_OPENAI_API_KEY }}" --endpoint "${{ secrets.AZURE_OPENAI_ENDPOINT }}"
+          dotnet run --configuration Release -- evaluate "../examples/csharp-server-evals.yaml" --verbose --format clean --api-key "${{ secrets.AZURE_OPENAI_API_KEY }}" --endpoint "${{ secrets.AZURE_OPENAI_ENDPOINT }}"
 
       - name: Run TypeScript MCP Server Evaluation
         if: github.event.inputs.run_typescript != 'false'
         run: |
           Set-Location MCP.Evals
-          dotnet run --configuration Release -- evaluate "../examples/typescript-server-evals.yaml" --verbose --output "$env:TEMP/typescript-results.json" --format json --api-key "${{ secrets.AZURE_OPENAI_API_KEY }}" --endpoint "${{ secrets.AZURE_OPENAI_ENDPOINT }}"
+          dotnet run --configuration Release -- evaluate "../examples/typescript-server-evals.yaml" --verbose --format clean --api-key "${{ secrets.AZURE_OPENAI_API_KEY }}" --endpoint "${{ secrets.AZURE_OPENAI_ENDPOINT }}"
 
       - name: Upload C# evaluation results
         if: github.event.inputs.run_csharp != 'false' && always()
         uses: actions/upload-artifact@v4
         with:
           name: csharp-evaluation-results
-          path: ${{ runner.temp }}/csharp-results.json
+          path: examples/csharp-server-evals.md
           retention-days: 30
 
       - name: Upload TypeScript evaluation results
@@ -111,24 +111,26 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: typescript-evaluation-results
-          path: ${{ runner.temp }}/typescript-results.json
+          path: examples/typescript-server-evals.md
           retention-days: 30
 
       - name: Display evaluation summaries
         if: always()
         run: |
-          "## Evaluation Results Summary" | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+          "## 📊 MCP Evaluation Results" | Add-Content -Path $env:GITHUB_STEP_SUMMARY
 
-          if (Test-Path "$env:TEMP/csharp-results.json") {
-            "### C# MCP Server Results" | Add-Content -Path $env:GITHUB_STEP_SUMMARY
-            '```json' | Add-Content -Path $env:GITHUB_STEP_SUMMARY
-            Get-Content "$env:TEMP/csharp-results.json" | Add-Content -Path $env:GITHUB_STEP_SUMMARY
-            '```' | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+          if (Test-Path "examples/csharp-server-evals.md") {
+            "" | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+            "### 🚀 C# MCP Server Results" | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+            "" | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+            Get-Content "examples/csharp-server-evals.md" | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+            "" | Add-Content -Path $env:GITHUB_STEP_SUMMARY
           }
 
-          if (Test-Path "$env:TEMP/typescript-results.json") {
-            "### TypeScript MCP Server Results" | Add-Content -Path $env:GITHUB_STEP_SUMMARY
-            '```json' | Add-Content -Path $env:GITHUB_STEP_SUMMARY
-            Get-Content "$env:TEMP/typescript-results.json" | Add-Content -Path $env:GITHUB_STEP_SUMMARY
-            '```' | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+          if (Test-Path "examples/typescript-server-evals.md") {
+            "" | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+            "### 📦 TypeScript MCP Server Results" | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+            "" | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+            Get-Content "examples/typescript-server-evals.md" | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+            "" | Add-Content -Path $env:GITHUB_STEP_SUMMARY
           }
