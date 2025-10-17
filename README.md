@@ -11,7 +11,7 @@ An evaluation framework for testing [Model Context Protocol (MCP)](https://model
 ## Features
 
 - 🔍 **Automated MCP Server Testing** - Run evaluations against MCP servers
-- 🤖 **Multi-Language Model Support** - Compatible with OpenAI, Azure OpenAI, and Anthropic models
+- 🤖 **Multi-Language Model Support** - Azure OpenAI (verified), OpenAI (needs verification), Anthropic (not implemented)*
 - 📊 **Flexible Configuration** - YAML configuration support
 - 🚀 **Multiple Transport Methods** - Support for stdio and HTTP transports
 
@@ -40,8 +40,9 @@ Create a YAML configuration file (e.g., `my-server-eval.yaml`):
 
 ```yaml
 # Language model configuration
+# Status: azure-openai (✅ verified), openai (⚠️ needs verification), anthropic (❌ not implemented)
 model:
-  provider: openai  # or azure-openai, anthropic
+  provider: azure-openai  # Recommended: use azure-openai (verified working)
   name: gpt-4o
 
 # MCP server configuration
@@ -105,21 +106,25 @@ Results include detailed execution logs, scoring, and performance metrics:
 
 ### Language Model Providers
 
-#### OpenAI
-```yaml
-model:
-  provider: openai
-  name: gpt-4o
-```
-
-#### Azure OpenAI
+#### Azure OpenAI ✅ **VERIFIED WORKING**
+<!-- ✅ Fully implemented, tested, and verified functional -->
 ```yaml
 model:
   provider: azure-openai
   name: gpt-4o
 ```
 
-#### Anthropic
+#### OpenAI ⚠️ **NEEDS VERIFICATION** 
+<!-- ⚠️ Implementation exists but requires testing/verification -->
+```yaml
+model:
+  provider: openai
+  name: gpt-4o
+```
+
+#### Anthropic ❌ **NOT IMPLEMENTED**
+<!-- ❌ Returns placeholder responses only - actual implementation pending -->
+<!-- The Anthropic.SDK is included but not yet integrated with actual API calls -->
 ```yaml
 model:
   provider: anthropic
@@ -214,5 +219,10 @@ MCP.Evals follows SOLID principles with a clean architecture:
 This project was inspired by [mcp-evals](https://github.com/mclenhard/mcp-evals) by mclenhard.
 
 ---
+
+**Implementation Status:**
+- **Azure OpenAI**: ✅ Verified working and recommended for production use
+- **OpenAI**: ⚠️ Implementation exists but needs verification testing
+- **Anthropic**: ❌ Not implemented - returns placeholder responses only
 
 Made with ❤️ for the MCP community
