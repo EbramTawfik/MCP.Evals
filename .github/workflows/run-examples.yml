@@ -86,63 +86,17 @@ jobs:
           cd mcp-sample-projects/typescript-sample
           npm run build
 
-      - name: Install yq for YAML processing
-        run: |
-          Invoke-WebRequest -Uri "https://github.com/mikefarah/yq/releases/latest/download/yq_windows_amd64.exe" -OutFile "$env:TEMP\yq.exe"
-          $env:PATH += ";$env:TEMP"
-
-      - name: Create temporary config for C# example
-        if: github.event.inputs.run_csharp != 'false'
-        run: |
-          # Copy the example config and inject Azure credentials
-          Copy-Item "examples/csharp-server-evals.yaml" "$env:TEMP/csharp-config.yaml"
-
-          # Inject Azure credentials into the existing YAML structure
-          & "$env:TEMP/yq.exe" eval '.model.apiKey = strenv(AZURE_OPENAI_API_KEY)' -i "$env:TEMP/csharp-config.yaml"
-          & "$env:TEMP/yq.exe" eval '.model.endpoint = strenv(AZURE_OPENAI_ENDPOINT)' -i "$env:TEMP/csharp-config.yaml"
-
-          # Update the server path to use the Release build with .exe extension for Windows
-          & "$env:TEMP/yq.exe" eval '.server.path = "mcp-sample-projects/CSharpMcpSample/bin/Release/net8.0/CSharpMcpSample.exe"' -i "$env:TEMP/csharp-config.yaml"
-
-          Write-Host "Updated C# configuration:"
-          Get-Content "$env:TEMP/csharp-config.yaml"
-        env:
-          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
-          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
-
-      - name: Create temporary config for TypeScript example
-        if: github.event.inputs.run_typescript != 'false'
-        run: |
-          # Copy the example config and inject Azure credentials
-          Copy-Item "examples/typescript-server-evals.yaml" "$env:TEMP/typescript-config.yaml"
-
-          # Inject Azure credentials into the existing YAML structure
-          & "$env:TEMP/yq.exe" eval '.model.apiKey = strenv(AZURE_OPENAI_API_KEY)' -i "$env:TEMP/typescript-config.yaml"
-          & "$env:TEMP/yq.exe" eval '.model.endpoint = strenv(AZURE_OPENAI_ENDPOINT)' -i "$env:TEMP/typescript-config.yaml"
-
-          Write-Host "Updated TypeScript configuration:"
-          Get-Content "$env:TEMP/typescript-config.yaml"
-        env:
-          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
-          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
-
       - name: Run C# MCP Server Evaluation
         if: github.event.inputs.run_csharp != 'false'
         run: |
           Set-Location MCP.Evals
-          dotnet run --configuration Release -- evaluate "$env:TEMP/csharp-config.yaml" --verbose --output "$env:TEMP/csharp-results.json" --format json
-        env:
-          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
-          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          dotnet run --configuration Release -- evaluate "../examples/csharp-server-evals.yaml" --verbose --output "$env:TEMP/csharp-results.json" --format json --api-key "${{ secrets.AZURE_OPENAI_API_KEY }}" --endpoint "${{ secrets.AZURE_OPENAI_ENDPOINT }}"
 
       - name: Run TypeScript MCP Server Evaluation
         if: github.event.inputs.run_typescript != 'false'
         run: |
           Set-Location MCP.Evals
-          dotnet run --configuration Release -- evaluate "$env:TEMP/typescript-config.yaml" --verbose --output "$env:TEMP/typescript-results.json" --format json
-        env:
-          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
-          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          dotnet run --configuration Release -- evaluate "../examples/typescript-server-evals.yaml" --verbose --output "$env:TEMP/typescript-results.json" --format json --api-key "${{ secrets.AZURE_OPENAI_API_KEY }}" --endpoint "${{ secrets.AZURE_OPENAI_ENDPOINT }}"
 
       - name: Upload C# evaluation results
         if: github.event.inputs.run_csharp != 'false' && always()
