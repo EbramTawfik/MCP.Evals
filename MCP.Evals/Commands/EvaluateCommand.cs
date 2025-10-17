@@ -232,6 +232,7 @@ public class EvaluateCommand : Command
                     r.Score.OverallComments
                 } : null,
                 r.Prompt,
+                r.Response,
                 ResponseLength = r.Response?.Length ?? 0
             })
         };
