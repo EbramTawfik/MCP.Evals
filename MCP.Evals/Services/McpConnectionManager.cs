@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using MCP.Evals.Abstractions;
+using MCP.Evals.Commands;
 using MCP.Evals.Exceptions;
 using MCP.Evals.Models;
 using ModelContextProtocol.Client;
@@ -27,13 +28,14 @@ public class McpConnectionManager : IMcpConnectionManager
         ITransportResolutionService transportResolver,
         ITransportCreationService transportFactory,
         IServerProcessManager serverProcessManager,
-        ILogger<McpConnectionManager> logger)
+        ILogger<McpConnectionManager> logger,
+        EvaluationCommandOptions? commandOptions = null)
     {
         _transportResolver = transportResolver;
         _transportFactory = transportFactory;
         _serverProcessManager = serverProcessManager;
         _logger = logger;
-        _verboseLogging = Environment.GetEnvironmentVariable("MCP_EVALS_VERBOSE") == "true";
+        _verboseLogging = commandOptions?.Verbose ?? false;
     }
 
     public async Task<McpClient> GetOrCreateClientAsync(

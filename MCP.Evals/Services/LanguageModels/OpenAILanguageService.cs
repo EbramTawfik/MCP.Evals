@@ -16,18 +16,15 @@ public class OpenAILanguageService : ILanguageModel
     private readonly OpenAIClient _openAIClient;
     private readonly LanguageModelConfiguration _config;
     private readonly ILogger<OpenAILanguageService> _logger;
-    private readonly IMcpClientService _mcpClientService;
 
     public OpenAILanguageService(
         OpenAIClient openAIClient,
         IOptions<LanguageModelConfiguration> config,
-        ILogger<OpenAILanguageService> logger,
-        IMcpClientService mcpClientService)
+        ILogger<OpenAILanguageService> logger)
     {
         _openAIClient = openAIClient;
         _config = config.Value;
         _logger = logger;
-        _mcpClientService = mcpClientService;
     }
 
     public async Task<string> GenerateResponseAsync(
@@ -76,24 +73,15 @@ public class OpenAILanguageService : ILanguageModel
 
         try
         {
-            // For now, we'll use the MCP client service to handle tool interactions
-            // In a more sophisticated implementation, we would integrate MCP tools
-            // directly with OpenAI's function calling capabilities
-
-            var toolResponse = await _mcpClientService.ExecuteToolInteractionAsync(
-                serverConfig, userPrompt, cancellationToken);
-
-            // Use the basic generate method to process the tool response
-            var evaluationPrompt = $"""
-                Based on the following tool interaction, provide a comprehensive response:
+            // TODO: Tool execution should be handled by a higher-level orchestrator
+            // For now, just generate a basic response without tool interaction
+            var enhancedPrompt = $"""
+                {userPrompt}
                 
-                User Query: {userPrompt}
-                Tool Response: {toolResponse}
-                
-                Please analyze and synthesize the information from the tool response to provide a complete answer.
+                Note: This query may benefit from tool interactions, but tool execution is currently handled at a higher level.
                 """;
 
-            return await GenerateResponseAsync(systemPrompt, evaluationPrompt, cancellationToken);
+            return await GenerateResponseAsync(systemPrompt, enhancedPrompt, cancellationToken);
         }
         catch (Exception ex) when (ex is not LanguageModelException)
         {

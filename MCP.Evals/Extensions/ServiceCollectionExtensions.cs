@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MCP.Evals.Abstractions;
+using MCP.Evals.Commands;
 using MCP.Evals.Models;
 using MCP.Evals.Configuration;
 using MCP.Evals.Services;
@@ -27,17 +28,27 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         Action<McpEvalsOptions>? configureOptions = null)
     {
+        Console.WriteLine("[TRACE] Starting service registration...");
+
         // Configure options
         var options = new McpEvalsOptions();
         configureOptions?.Invoke(options);
         services.AddSingleton(Options.Create(options));
 
+        Console.WriteLine("[TRACE] Adding core services...");
         // Add core services following SOLID principles
         AddCoreServices(services);
+
+        Console.WriteLine("[TRACE] Adding infrastructure services...");
         AddInfrastructureServices(services, options);
+
+        Console.WriteLine("[TRACE] Adding validation services...");
         AddValidationServices(services);
+
+        Console.WriteLine("[TRACE] Adding metrics services...");
         AddMetricsServices(services, options);
 
+        Console.WriteLine("[TRACE] Service registration completed.");
         return services;
     }
 
@@ -66,6 +77,7 @@ public static class ServiceCollectionExtensions
 
     private static void AddInfrastructureServices(IServiceCollection services, McpEvalsOptions options)
     {
+        Console.WriteLine("[TRACE] Adding language model configuration...");
         // Language model configuration - use object initialization for init-only properties
         var languageModelConfig = new LanguageModelConfiguration
         {
@@ -77,40 +89,35 @@ public static class ServiceCollectionExtensions
         };
         services.AddSingleton(Options.Create(languageModelConfig));
 
+        Console.WriteLine("[TRACE] Adding HTTP client...");
         // HTTP client for Azure OpenAI custom implementation
         services.AddHttpClient();
 
+        Console.WriteLine("[TRACE] Registering language model factory...");
         // Language model implementations (LSP - all can be substituted)
         services.AddSingleton<ILanguageModel>(provider =>
         {
+            Console.WriteLine("[TRACE] Inside language model factory...");
             var config = provider.GetRequiredService<IOptions<LanguageModelConfiguration>>();
             var logger = provider.GetRequiredService<ILogger<OpenAILanguageService>>();
-            var mcpClientService = provider.GetRequiredService<IMcpClientService>();
+            // Removed IMcpClientService dependency to fix circular dependency
 
-            // Check for Azure OpenAI first
-            var azureEndpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
-            var azureApiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY");
+            Console.WriteLine($"[TRACE] Language model provider: {config.Value.Provider}");
+            // Get command options 
+            var commandOptions = provider.GetService<EvaluationCommandOptions>();
+            var isVerbose = commandOptions?.Verbose ?? false;
 
-            if (!string.IsNullOrEmpty(azureEndpoint) && !string.IsNullOrEmpty(azureApiKey))
-            {
-                // Check if verbose mode is enabled
-                var isVerbose = bool.TryParse(Environment.GetEnvironmentVariable("MCP_EVALS_VERBOSE"), out var verboseResult) && verboseResult;
-                if (isVerbose)
-                {
-                    Console.WriteLine("[DEBUG] Detected Azure OpenAI configuration - using custom Azure OpenAI client");
-                }
-                var httpClient = provider.GetRequiredService<HttpClient>();
-                var azureLogger = provider.GetRequiredService<ILogger<AzureOpenAILanguageService>>();
-                return new AzureOpenAILanguageService(httpClient, config, azureLogger, mcpClientService, azureEndpoint, azureApiKey);
-            }
-
+            // Use the provider specified in the YAML configuration to determine how to create the language model
             return config.Value.Provider.ToLower() switch
             {
-                "openai" => CreateOpenAILanguageModel(provider, config, logger, mcpClientService),
-                "anthropic" => CreateAnthropicLanguageModel(provider, config, mcpClientService),
+                "azure-openai" => CreateAzureOpenAILanguageModel(provider, config, logger, commandOptions),
+                "openai" => CreateOpenAILanguageModel(provider, config, logger),
+                "anthropic" => CreateAnthropicLanguageModel(provider, config),
                 _ => throw new InvalidOperationException($"Unsupported language model provider: {config.Value.Provider}")
             };
         });
+
+        Console.WriteLine("[TRACE] Adding configuration loaders...");
 
         // Configuration loaders (OCP - can add new types without modifying existing code)
         services.AddSingleton<IConfigurationLoader, YamlConfigurationLoader>();
@@ -141,38 +148,38 @@ public static class ServiceCollectionExtensions
     private static OpenAILanguageService CreateOpenAILanguageModel(
         IServiceProvider provider,
         IOptions<LanguageModelConfiguration> config,
-        ILogger<OpenAILanguageService> logger,
-        IMcpClientService mcpClientService)
+        ILogger<OpenAILanguageService> logger)
     {
         Console.WriteLine($"[DEBUG] Creating OpenAI Language Model...");
         Console.WriteLine($"[DEBUG] Config API Key: {(string.IsNullOrEmpty(config.Value.ApiKey) ? "NOT SET" : "SET")}");
 
-        var envApiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
-        var azureApiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY");
-        var azureEndpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
+        // Try to get command options first, fallback to environment variables for backwards compatibility
+        var commandOptions = provider.GetService<EvaluationCommandOptions>();
 
-        Console.WriteLine($"[DEBUG] Environment API Key: {(string.IsNullOrEmpty(envApiKey) ? "NOT SET" : "SET")}");
-        Console.WriteLine($"[DEBUG] Azure API Key: {(string.IsNullOrEmpty(azureApiKey) ? "NOT SET" : "SET")}");
-        Console.WriteLine($"[DEBUG] Azure Endpoint: {(string.IsNullOrEmpty(azureEndpoint) ? "NOT SET" : "SET")}");
+        var apiKeyFromCommand = commandOptions?.ApiKey;
+        var endpoint = commandOptions?.Endpoint;
 
-        var apiKey = config.Value.ApiKey ?? azureApiKey ?? envApiKey;
+        Console.WriteLine($"[DEBUG] Command API Key: {(string.IsNullOrEmpty(apiKeyFromCommand) ? "NOT SET" : "SET")}");
+        Console.WriteLine($"[DEBUG] Endpoint: {(string.IsNullOrEmpty(endpoint) ? "NOT SET" : "SET")}");
+
+        var apiKey = config.Value.ApiKey ?? apiKeyFromCommand;
         Console.WriteLine($"[DEBUG] Final API Key: {(string.IsNullOrEmpty(apiKey) ? "NOT SET" : "SET")}");
 
         if (string.IsNullOrEmpty(apiKey))
         {
-            throw new InvalidOperationException("OpenAI API key not configured. Set OPENAI_API_KEY or AZURE_OPENAI_API_KEY environment variable or configure in options.");
+            throw new InvalidOperationException("API key not configured. Provide --api-key command line argument or configure in YAML configuration.");
         }
 
         OpenAIClient openAIClient;
 
-        // Check if we're using Azure OpenAI (has endpoint) or regular OpenAI
-        if (!string.IsNullOrEmpty(azureEndpoint))
+        // Check if we're using a custom endpoint or regular OpenAI
+        if (!string.IsNullOrEmpty(endpoint))
         {
-            Console.WriteLine($"[DEBUG] Using Azure OpenAI with endpoint: {azureEndpoint}");
+            Console.WriteLine($"[DEBUG] Using custom endpoint: {endpoint}");
             var credential = new System.ClientModel.ApiKeyCredential(apiKey);
             openAIClient = new OpenAIClient(credential, new OpenAIClientOptions
             {
-                Endpoint = new Uri(azureEndpoint)
+                Endpoint = new Uri(endpoint)
             });
         }
         else
@@ -180,21 +187,61 @@ public static class ServiceCollectionExtensions
             Console.WriteLine($"[DEBUG] Using OpenAI API");
             openAIClient = new OpenAIClient(apiKey);
         }
-        return new OpenAILanguageService(openAIClient, config, logger, mcpClientService);
+        return new OpenAILanguageService(openAIClient, config, logger);
+    }
+
+    private static AzureOpenAILanguageService CreateAzureOpenAILanguageModel(
+        IServiceProvider provider,
+        IOptions<LanguageModelConfiguration> config,
+        ILogger<OpenAILanguageService> logger,
+        EvaluationCommandOptions? commandOptions)
+    {
+        var isVerbose = commandOptions?.Verbose ?? false;
+
+        if (isVerbose)
+        {
+            Console.WriteLine($"[DEBUG] Creating Azure OpenAI Language Model...");
+        }
+
+        // Use API key from config or command line
+        var apiKey = config.Value.ApiKey ?? commandOptions?.ApiKey;
+
+        // Use endpoint from command line (required for Azure OpenAI)
+        var endpoint = commandOptions?.Endpoint;
+
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            throw new InvalidOperationException("API key not configured. Provide --api-key command line argument or configure in YAML.");
+        }
+
+        if (string.IsNullOrEmpty(endpoint))
+        {
+            throw new InvalidOperationException("Azure OpenAI endpoint not configured. Provide --endpoint command line argument.");
+        }
+
+        if (isVerbose)
+        {
+            Console.WriteLine($"[DEBUG] Using Azure OpenAI with endpoint: {endpoint}");
+        }
+
+        var httpClient = provider.GetRequiredService<HttpClient>();
+        var azureLogger = provider.GetRequiredService<ILogger<AzureOpenAILanguageService>>();
+        return new AzureOpenAILanguageService(httpClient, config, azureLogger, endpoint, apiKey);
     }
 
     private static AnthropicLanguageService CreateAnthropicLanguageModel(
         IServiceProvider provider,
-        IOptions<LanguageModelConfiguration> config,
-        IMcpClientService mcpClientService)
+        IOptions<LanguageModelConfiguration> config)
     {
-        var apiKey = config.Value.ApiKey ?? Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
+        var commandOptions = provider.GetService<EvaluationCommandOptions>();
+        var apiKey = config.Value.ApiKey ?? commandOptions?.ApiKey;
+
         if (string.IsNullOrEmpty(apiKey))
         {
-            throw new InvalidOperationException("Anthropic API key not configured. Set ANTHROPIC_API_KEY environment variable or configure in options.");
+            throw new InvalidOperationException("Anthropic API key not configured. Provide --api-key command line argument or configure in YAML configuration.");
         }
 
         var logger = provider.GetRequiredService<ILogger<AnthropicLanguageService>>();
-        return new AnthropicLanguageService(config, logger, mcpClientService);
+        return new AnthropicLanguageService(config, logger);
     }
 }

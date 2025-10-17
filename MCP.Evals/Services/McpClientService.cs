@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using MCP.Evals.Exceptions;
 using MCP.Evals.Abstractions;
+using MCP.Evals.Commands;
 using MCP.Evals.Models;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
@@ -25,12 +26,13 @@ public class McpClientService : IMcpClientService
     public McpClientService(
         IMcpConnectionManager connectionManager,
         IToolExecutionPlanningService toolExecutionPlanner,
-        ILogger<McpClientService> logger)
+        ILogger<McpClientService> logger,
+        EvaluationCommandOptions? commandOptions = null)
     {
         _connectionManager = connectionManager;
         _toolExecutionPlanner = toolExecutionPlanner;
         _logger = logger;
-        _verboseLogging = Environment.GetEnvironmentVariable("MCP_EVALS_VERBOSE") == "true";
+        _verboseLogging = commandOptions?.Verbose ?? false;
     }
 
     public async Task<string> ExecuteToolInteractionAsync(

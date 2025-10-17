@@ -16,27 +16,21 @@ public class AzureOpenAILanguageService : ILanguageModel
     private readonly HttpClient _httpClient;
     private readonly LanguageModelConfiguration _config;
     private readonly ILogger<AzureOpenAILanguageService> _logger;
-    private readonly IMcpClientService _mcpClientService;
     private readonly string _endpoint;
     private readonly string _apiKey;
-    private readonly string _apiVersion;
 
     public AzureOpenAILanguageService(
         HttpClient httpClient,
         IOptions<LanguageModelConfiguration> config,
         ILogger<AzureOpenAILanguageService> logger,
-        IMcpClientService mcpClientService,
         string endpoint,
-        string apiKey,
-        string apiVersion = "2025-01-01-preview")
+        string apiKey)
     {
         _httpClient = httpClient;
         _config = config.Value;
         _logger = logger;
-        _mcpClientService = mcpClientService;
-        _endpoint = endpoint.TrimEnd('/');
+        _endpoint = endpoint;
         _apiKey = apiKey;
-        _apiVersion = apiVersion;
     }
 
     public async Task<string> GenerateResponseAsync(
@@ -49,7 +43,6 @@ public class AzureOpenAILanguageService : ILanguageModel
         try
         {
             var deploymentName = _config.Name ?? "gpt-4o";
-            var url = $"{_endpoint}/openai/deployments/{deploymentName}/chat/completions?api-version={_apiVersion}";
 
             var requestBody = new
             {
@@ -75,7 +68,7 @@ public class AzureOpenAILanguageService : ILanguageModel
 
             _httpClient.DefaultRequestHeaders.Add("api-key", _apiKey);
 
-            var response = await _httpClient.PostAsync(url, content, cancellationToken);
+            var response = await _httpClient.PostAsync(_endpoint, content, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -108,19 +101,15 @@ public class AzureOpenAILanguageService : ILanguageModel
 
         try
         {
-            var toolResponse = await _mcpClientService.ExecuteToolInteractionAsync(
-                serverConfig, userPrompt, cancellationToken);
-
-            var evaluationPrompt = $"""
-                Based on the following tool interaction, provide a comprehensive response:
+            // TODO: Tool execution should be handled by a higher-level orchestrator
+            // For now, just generate a basic response without tool interaction
+            var enhancedPrompt = $"""
+                {userPrompt}
                 
-                User Query: {userPrompt}
-                Tool Response: {toolResponse}
-                
-                Please analyze and synthesize the information from the tool response to provide a complete answer.
+                Note: This query may benefit from tool interactions, but tool execution is currently handled at a higher level.
                 """;
 
-            return await GenerateResponseAsync(systemPrompt, evaluationPrompt, cancellationToken);
+            return await GenerateResponseAsync(systemPrompt, enhancedPrompt, cancellationToken);
         }
         catch (Exception ex) when (ex is not LanguageModelException)
         {

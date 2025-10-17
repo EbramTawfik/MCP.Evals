@@ -13,16 +13,13 @@ public class AnthropicLanguageService : ILanguageModel
 {
     private readonly ILogger<AnthropicLanguageService> _logger;
     private readonly LanguageModelConfiguration _config;
-    private readonly IMcpClientService _mcpClientService;
 
     public AnthropicLanguageService(
         IOptions<LanguageModelConfiguration> config,
-        ILogger<AnthropicLanguageService> logger,
-        IMcpClientService mcpClientService)
+        ILogger<AnthropicLanguageService> logger)
     {
         _config = config.Value;
         _logger = logger;
-        _mcpClientService = mcpClientService;
     }
 
     public async Task<string> GenerateResponseAsync(
@@ -58,19 +55,15 @@ public class AnthropicLanguageService : ILanguageModel
 
         try
         {
-            var toolResponse = await _mcpClientService.ExecuteToolInteractionAsync(
-                serverConfig, userPrompt, cancellationToken);
-
-            var evaluationPrompt = $"""
-                Based on the following tool interaction, provide a comprehensive response:
+            // TODO: Tool execution should be handled by a higher-level orchestrator
+            // For now, just generate a basic response without tool interaction
+            var enhancedPrompt = $"""
+                {userPrompt}
                 
-                User Query: {userPrompt}
-                Tool Response: {toolResponse}
-                
-                Please analyze and synthesize the information from the tool response to provide a complete answer.
+                Note: This query may benefit from tool interactions, but tool execution is currently handled at a higher level.
                 """;
 
-            return await GenerateResponseAsync(systemPrompt, evaluationPrompt, cancellationToken);
+            return await GenerateResponseAsync(systemPrompt, enhancedPrompt, cancellationToken);
         }
         catch (Exception ex) when (ex is not LanguageModelException)
         {

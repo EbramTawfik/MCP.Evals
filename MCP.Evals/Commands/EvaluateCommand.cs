@@ -2,8 +2,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using MCP.Evals.Abstractions;
+using MCP.Evals.Extensions;
 using MCP.Evals.Models;
 using System.CommandLine;
+using System.CommandLine.Invocation;
 using System.Diagnostics;
 using System.Text.Json;
 
@@ -38,38 +40,66 @@ public class EvaluateCommand : Command
             () => Environment.ProcessorCount,
             "Maximum number of parallel evaluations");
 
+        var apiKeyOption = new Option<string?>(
+            ["--api-key"],
+            "API key for the language model provider (OpenAI, Azure OpenAI, or Anthropic)");
+
+        var endpointOption = new Option<string?>(
+            ["--endpoint"],
+            "Custom endpoint URL (for Azure OpenAI or other custom providers)");
+
+        var enableMetricsOption = new Option<bool>(
+            ["--enable-metrics"],
+            "Enable Prometheus metrics collection");
+
         AddArgument(configPathArgument);
         AddOption(outputOption);
         AddOption(formatOption);
         AddOption(verboseOption);
         AddOption(parallelOption);
+        AddOption(apiKeyOption);
+        AddOption(endpointOption);
+        AddOption(enableMetricsOption);
 
-        this.SetHandler(ExecuteAsync, configPathArgument, outputOption, formatOption, verboseOption, parallelOption);
+        this.SetHandler(async (context) =>
+        {
+            var args = new EvaluateCommandArgs
+            {
+                ConfigPath = context.ParseResult.GetValueForArgument(configPathArgument),
+                OutputPath = context.ParseResult.GetValueForOption(outputOption),
+                Format = context.ParseResult.GetValueForOption(formatOption),
+                Verbose = context.ParseResult.GetValueForOption(verboseOption),
+                Parallel = context.ParseResult.GetValueForOption(parallelOption),
+                ApiKey = context.ParseResult.GetValueForOption(apiKeyOption),
+                Endpoint = context.ParseResult.GetValueForOption(endpointOption),
+                EnableMetrics = context.ParseResult.GetValueForOption(enableMetricsOption)
+            };
+
+            var result = await ExecuteAsync(args);
+            context.ExitCode = result;
+        });
     }
 
-    private static async Task<int> ExecuteAsync(
-        string configPath,
-        string? outputPath,
-        string format,
-        bool verbose,
-        int parallel)
+    private static async Task<int> ExecuteAsync(EvaluateCommandArgs args)
     {
         try
         {
-            if (verbose)
+            if (args.Verbose)
             {
-                Console.WriteLine($"[INFO] Starting evaluation with config: {configPath}");
+                Console.WriteLine($"[INFO] Starting evaluation with config: {args.ConfigPath}");
                 Console.WriteLine($"[INFO] Current Directory: {Environment.CurrentDirectory}");
-                Console.WriteLine($"[INFO] Full Config Path: {Path.GetFullPath(configPath)}");
+                Console.WriteLine($"[INFO] Full Config Path: {Path.GetFullPath(args.ConfigPath)}");
             }
 
-            // Build and configure the host
-            var hostBuilder = Program.CreateHostBuilder();
+            Console.WriteLine("[TRACE] Step 1: Creating host builder...");
+            // Build and configure the host with command-line options
+            var hostBuilder = CreateHostBuilderWithOptions(args.Verbose, args.EnableMetrics, args.ApiKey, args.Endpoint);
 
-            // Configure verbose flag in the environment for services to use
-            Environment.SetEnvironmentVariable("MCP_EVALS_VERBOSE", verbose.ToString());
+            Console.WriteLine("[TRACE] Step 2: Configuring logging...");
+            // Remove the environment variable setting since we're passing parameters directly
+            // Environment.SetEnvironmentVariable("MCP_EVALS_VERBOSE", verbose.ToString());
 
-            if (verbose)
+            if (args.Verbose)
             {
                 hostBuilder.ConfigureLogging(logging =>
                 {
@@ -89,46 +119,50 @@ public class EvaluateCommand : Command
                 });
             }
 
+            Console.WriteLine("[TRACE] Step 3: Building host...");
             using var host = hostBuilder.Build();
 
+            Console.WriteLine("[TRACE] Step 4: Getting services...");
             var logger = host.Services.GetRequiredService<ILogger<EvaluateCommand>>();
             var orchestrator = host.Services.GetRequiredService<IEvaluationOrchestrationService>();
 
-            if (verbose)
+            Console.WriteLine("[TRACE] Step 5: Services obtained successfully");
+
+            if (args.Verbose)
             {
-                logger.LogInformation("Starting MCP evaluations from: {ConfigPath}", configPath);
+                logger.LogInformation("Starting MCP evaluations from: {ConfigPath}", args.ConfigPath);
             }
             else
             {
-                Console.WriteLine($"🚀 Starting evaluations from: {Path.GetFileName(configPath)}");
+                Console.WriteLine($"🚀 Starting evaluations from: {Path.GetFileName(args.ConfigPath)}");
             }
 
-            if (!File.Exists(configPath))
+            if (!File.Exists(args.ConfigPath))
             {
-                Console.WriteLine($"[ERROR] Configuration file not found: {configPath}");
-                Console.WriteLine($"[ERROR] Absolute path: {Path.GetFullPath(configPath)}");
-                logger.LogError("Configuration file not found: {ConfigPath}", configPath);
+                Console.WriteLine($"[ERROR] Configuration file not found: {args.ConfigPath}");
+                Console.WriteLine($"[ERROR] Absolute path: {Path.GetFullPath(args.ConfigPath)}");
+                logger.LogError("Configuration file not found: {ConfigPath}", args.ConfigPath);
                 return 1;
             }
 
-            if (verbose)
+            if (args.Verbose)
             {
-                var configContent = await File.ReadAllTextAsync(configPath);
+                var configContent = await File.ReadAllTextAsync(args.ConfigPath);
                 Console.WriteLine($"[INFO] Config file loaded successfully ({configContent.Length} chars)");
             }
 
             var stopwatch = Stopwatch.StartNew();
 
             // Run evaluations
-            var results = await orchestrator.RunEvaluationsFromFileAsync(configPath);
+            var results = await orchestrator.RunEvaluationsFromFileAsync(args.ConfigPath);
 
             stopwatch.Stop();
 
             // Generate output
-            await GenerateOutputAsync(results, outputPath, format, logger, stopwatch.Elapsed);
+            await GenerateOutputAsync(results, args.OutputPath, args.Format, logger, stopwatch.Elapsed);
 
-            // Clean up environment variable
-            Environment.SetEnvironmentVariable("MCP_EVALS_VERBOSE", null);
+            // Clean up environment variable (no longer needed)
+            // Environment.SetEnvironmentVariable("MCP_EVALS_VERBOSE", null);
 
             // Return exit code based on results
             var failedCount = results.Count(r => !r.IsSuccess);
@@ -144,7 +178,7 @@ public class EvaluateCommand : Command
         catch (Exception ex)
         {
             Console.Error.WriteLine($"[ERROR] Evaluation failed: {ex.Message}");
-            if (verbose)
+            if (args.Verbose)
             {
                 Console.Error.WriteLine($"[ERROR] Full exception: {ex}");
             }
@@ -373,5 +407,67 @@ public class EvaluateCommand : Command
         }
 
         return output;
+    }
+
+    /// <summary>
+    /// Create a configured host builder with command-line options instead of environment variables
+    /// </summary>
+    private static IHostBuilder CreateHostBuilderWithOptions(
+        bool verbose,
+        bool enableMetrics,
+        string? apiKey,
+        string? endpoint)
+    {
+        var builder = Host.CreateDefaultBuilder()
+            .ConfigureLogging(logging =>
+            {
+                logging.ClearProviders();
+                logging.AddConsole(options =>
+                {
+                    options.LogToStandardErrorThreshold = LogLevel.Warning;
+                });
+                logging.SetMinimumLevel(verbose ? LogLevel.Debug : LogLevel.Information);
+            })
+            .ConfigureServices((context, services) =>
+            {
+                // Add MCP Evals services using our extension method with options
+                services.AddMcpEvaluations(options =>
+                {
+                    if (verbose)
+                    {
+                        Console.WriteLine($"[DEBUG] Configuring services with command-line options");
+                        Console.WriteLine($"[DEBUG] API Key: {(string.IsNullOrEmpty(apiKey) ? "NOT SET" : "SET")}");
+                        Console.WriteLine($"[DEBUG] Endpoint: {(string.IsNullOrEmpty(endpoint) ? "NOT SET" : "SET")}");
+                    }
+
+                    // Configure language model with provided API key if available
+                    // The provider and model name will be determined from the YAML configuration
+                    if (!string.IsNullOrEmpty(apiKey))
+                    {
+                        options.DefaultLanguageModel = new LanguageModelConfiguration
+                        {
+                            Provider = "azure-openai", // Use Azure OpenAI when API key is provided via command line
+                            Name = "gpt-4o",           // Default model - will be overridden by YAML
+                            ApiKey = apiKey,
+                            MaxTokens = 4000,
+                            Temperature = 0.1
+                        };
+                    }
+
+                    // Enable Prometheus metrics if requested
+                    options.EnablePrometheusMetrics = enableMetrics;
+                });
+
+                // Add additional services with the command-line options
+                services.AddSingleton(new EvaluationCommandOptions
+                {
+                    Verbose = verbose,
+                    ApiKey = apiKey,
+                    Endpoint = endpoint,
+                    EnableMetrics = enableMetrics
+                });
+            });
+
+        return builder;
     }
 }

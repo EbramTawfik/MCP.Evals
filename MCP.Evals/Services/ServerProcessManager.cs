@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using MCP.Evals.Abstractions;
+using MCP.Evals.Commands;
 using MCP.Evals.Exceptions;
 using MCP.Evals.Models;
 using System.Collections.Concurrent;
@@ -24,12 +25,13 @@ public class ServerProcessManager : IServerProcessManager
     public ServerProcessManager(
         IServerTypeDetectionService serverTypeDetector,
         IServerProcessManagementService processManager,
-        ILogger<ServerProcessManager> logger)
+        ILogger<ServerProcessManager> logger,
+        EvaluationCommandOptions? commandOptions = null)
     {
         _serverTypeDetector = serverTypeDetector;
         _processManager = processManager;
         _logger = logger;
-        _verboseLogging = Environment.GetEnvironmentVariable("MCP_EVALS_VERBOSE") == "true";
+        _verboseLogging = commandOptions?.Verbose ?? false;
     }
 
     public bool IsServerProcessRequired(ServerConfiguration serverConfig)

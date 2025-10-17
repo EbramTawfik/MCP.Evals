@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using MCP.Evals.Abstractions;
+using MCP.Evals.Commands;
 using MCP.Evals.Models;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
@@ -15,11 +16,18 @@ public class ToolExecutionPlanningService : IToolExecutionPlanningService
 {
     private readonly ILogger<ToolExecutionPlanningService> _logger;
     private readonly bool _verboseLogging;
+    private readonly EvaluationCommandOptions? _commandOptions;
+    private readonly ILanguageModel _languageModel;
 
-    public ToolExecutionPlanningService(ILogger<ToolExecutionPlanningService> logger)
+    public ToolExecutionPlanningService(
+        ILogger<ToolExecutionPlanningService> logger,
+        ILanguageModel languageModel,
+        EvaluationCommandOptions? commandOptions = null)
     {
         _logger = logger;
-        _verboseLogging = Environment.GetEnvironmentVariable("MCP_EVALS_VERBOSE") == "true";
+        _languageModel = languageModel;
+        _commandOptions = commandOptions;
+        _verboseLogging = commandOptions?.Verbose ?? false;
     }
 
     public async Task<IReadOnlyList<ToolExecution>> PlanToolExecutionsAsync(
@@ -77,50 +85,34 @@ Rules:
 
         var userPrompt = $"User prompt: {prompt}";
 
-        var response = await CallAzureOpenAIAsync(systemPrompt, userPrompt, cancellationToken);
+        var response = await CallLanguageModelAsync(systemPrompt, userPrompt, cancellationToken);
         return ParseToolExecutions(response);
     }
 
-    private async Task<string> CallAzureOpenAIAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken)
+    private async Task<string> CallLanguageModelAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken)
     {
-        var endpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
-        var apiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY");
-        var deploymentName = Environment.GetEnvironmentVariable("AZURE_OPENAI_DEPLOYMENT_NAME") ?? "gpt-4o";
-
-        if (string.IsNullOrEmpty(endpoint) || string.IsNullOrEmpty(apiKey))
+        try
         {
-            throw new InvalidOperationException("Azure OpenAI configuration not found in environment variables");
-        }
-
-        using var client = new HttpClient();
-        client.DefaultRequestHeaders.Add("api-key", apiKey);
-
-        var requestBody = new
-        {
-            messages = new[]
+            if (_verboseLogging)
             {
-                new { role = "system", content = systemPrompt },
-                new { role = "user", content = userPrompt }
-            },
-            max_tokens = 500,
-            temperature = 0.1,
-            response_format = new { type = "json_object" }
-        };
+                _logger.LogDebug("Calling language model for tool planning");
+            }
 
-        var requestJson = JsonSerializer.Serialize(requestBody);
-        var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
+            // Use the configured language model service (could be OpenAI, Azure OpenAI, or Anthropic)
+            var response = await _languageModel.GenerateResponseAsync(systemPrompt, userPrompt, cancellationToken);
 
-        var response = await client.PostAsync(
-            $"{endpoint}/openai/deployments/{deploymentName}/chat/completions?api-version=2024-06-01",
-            content, cancellationToken);
+            if (_verboseLogging)
+            {
+                _logger.LogDebug("Language model response: {Response}", response);
+            }
 
-        response.EnsureSuccessStatusCode();
-
-        var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
-        var responseObj = JsonSerializer.Deserialize<JsonElement>(responseJson);
-        var assistantMessage = responseObj.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
-
-        return assistantMessage ?? "{}";
+            return response ?? "{}";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling language model for tool planning");
+            throw new InvalidOperationException("Language model not available for tool planning. Please configure API key and endpoint.", ex);
+        }
     }
 
     private IReadOnlyList<ToolExecution> ParseToolExecutions(string aiResponse)

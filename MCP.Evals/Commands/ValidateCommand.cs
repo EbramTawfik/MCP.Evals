@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using MCP.Evals.Abstractions;
+using MCP.Evals.Extensions;
 using MCP.Evals.Models;
 using System.CommandLine;
 
@@ -38,8 +39,11 @@ public class ValidateCommand : Command
     {
         try
         {
-            // Build and configure the host
-            var hostBuilder = Program.CreateHostBuilder();
+            // Build and configure the host with command-line options
+            var hostBuilder = CreateHostBuilderWithOptions(verbose);
+
+            // Remove the environment variable setting
+            // Environment.SetEnvironmentVariable("MCP_EVALS_VERBOSE", verbose.ToString());
 
             if (verbose)
             {
@@ -296,5 +300,35 @@ public class ValidateCommand : Command
             }
             return $"Server file not found at {server.Path}";
         }
+    }
+
+    /// <summary>
+    /// Create a configured host builder with command-line options instead of environment variables
+    /// </summary>
+    private static IHostBuilder CreateHostBuilderWithOptions(bool verbose)
+    {
+        var builder = Host.CreateDefaultBuilder()
+            .ConfigureLogging(logging =>
+            {
+                logging.ClearProviders();
+                logging.AddConsole(options =>
+                {
+                    options.LogToStandardErrorThreshold = LogLevel.Warning;
+                });
+                logging.SetMinimumLevel(verbose ? LogLevel.Debug : LogLevel.Information);
+            })
+            .ConfigureServices((context, services) =>
+            {
+                // Add MCP Evals services with minimal options for validation
+                services.AddMcpEvaluations();
+
+                // Add command options for services
+                services.AddSingleton(new EvaluationCommandOptions
+                {
+                    Verbose = verbose
+                });
+            });
+
+        return builder;
     }
 }

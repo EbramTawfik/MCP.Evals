@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using MCP.Evals.Abstractions;
+using MCP.Evals.Commands;
 using MCP.Evals.Exceptions;
 using MCP.Evals.Models;
 using System.Diagnostics;
@@ -15,10 +16,10 @@ public class ServerProcessManagementService : IServerProcessManagementService
     private readonly ILogger<ServerProcessManagementService> _logger;
     private readonly bool _verboseLogging;
 
-    public ServerProcessManagementService(ILogger<ServerProcessManagementService> logger)
+    public ServerProcessManagementService(ILogger<ServerProcessManagementService> logger, EvaluationCommandOptions? commandOptions = null)
     {
         _logger = logger;
-        _verboseLogging = Environment.GetEnvironmentVariable("MCP_EVALS_VERBOSE") == "true";
+        _verboseLogging = commandOptions?.Verbose ?? false;
     }
 
     public async Task<Process> StartServerAsync(

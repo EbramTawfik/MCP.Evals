@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using MCP.Evals.Abstractions;
+using MCP.Evals.Commands;
 using MCP.Evals.Exceptions;
 using MCP.Evals.Models;
 using ModelContextProtocol;
@@ -22,12 +23,13 @@ public class TransportCreationService : ITransportCreationService
     public TransportCreationService(
         IServerTypeDetectionService serverTypeDetector,
         IServerProcessManager serverProcessManager,
-        ILogger<TransportCreationService> logger)
+        ILogger<TransportCreationService> logger,
+        EvaluationCommandOptions? commandOptions = null)
     {
         _serverTypeDetector = serverTypeDetector;
         _serverProcessManager = serverProcessManager;
         _logger = logger;
-        _verboseLogging = Environment.GetEnvironmentVariable("MCP_EVALS_VERBOSE") == "true";
+        _verboseLogging = commandOptions?.Verbose ?? false;
     }
 
     public async Task<IClientTransport> CreateTransportAsync(
