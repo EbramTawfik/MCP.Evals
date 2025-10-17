@@ -8,14 +8,14 @@
         <LangVersion>latest</LangVersion>
         <PackAsTool>true</PackAsTool>
         <ToolCommandName>McpEval</ToolCommandName>
-        <AssemblyVersion>1.0.0</AssemblyVersion>
-        <FileVersion>1.0.0</FileVersion>
+        <AssemblyVersion>0.0.1</AssemblyVersion>
+        <FileVersion>0.0.1</FileVersion>
         <PublishSingleFile>true</PublishSingleFile>
         <SelfContained>false</SelfContained>
 
         <!-- NuGet Package Metadata -->
         <PackageId>MCP.Evals</PackageId>
-        <PackageVersion>1.0.0</PackageVersion>
+        <PackageVersion>0.0.1</PackageVersion>
         <Authors>Ebram Tawfik</Authors>
         <Company>Ebram Tawfik</Company>
         <Product>MCP.Evals</Product>
